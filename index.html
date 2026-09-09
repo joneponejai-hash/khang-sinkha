@@ -19,12 +19,14 @@
     -webkit-font-smoothing:antialiased; color:var(--dark);
   }
   #app{max-width:480px; margin:0 auto; min-height:100vh; background:var(--bg); position:relative; padding-bottom:96px; box-shadow:0 0 40px rgba(0,0,0,.06);}
-  .header{background:var(--dark); color:#fff; padding:28px 20px 20px; border-radius:0 0 24px 24px; box-shadow:0 4px 14px rgba(0,0,0,.15);}
+  .header{background:var(--dark); color:#fff; padding:28px 20px 20px; border-radius:0 0 24px 24px; box-shadow:0 4px 14px rgba(0,0,0,.15); background-size:cover; background-position:center; transition:background .2s;}
   .header-top{display:flex; align-items:center; gap:8px; margin-bottom:16px;}
-  .logo{width:36px; height:36px; border-radius:12px; background:var(--accent); display:flex; align-items:center; justify-content:center; flex-shrink:0; color:var(--dark);}
+  .logo{width:36px; height:36px; border-radius:12px; background:var(--accent); display:flex; align-items:center; justify-content:center; flex-shrink:0; color:var(--dark); overflow:hidden;}
+  .logo img{width:100%; height:100%; object-fit:cover; display:block;}
   .header h1{font-size:18px; font-weight:700; margin:0; line-height:1.2;}
   .header p{font-size:11px; color:rgba(255,255,255,.6); margin:2px 0 0;}
-  .header-icon-btn{width:36px; height:36px; border-radius:12px; background:rgba(255,255,255,.12); border:none; display:flex; align-items:center; justify-content:center; cursor:pointer; color:#fff; margin-left:auto; flex-shrink:0;}
+  .header-actions{display:flex; gap:8px; margin-left:auto; flex-shrink:0;}
+  .header-icon-btn{width:36px; height:36px; border-radius:12px; background:rgba(255,255,255,.12); border:none; display:flex; align-items:center; justify-content:center; cursor:pointer; color:#fff; flex-shrink:0;}
   .header-icon-btn svg{width:17px; height:17px;}
   .stats{display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;}
   .stat{background:rgba(255,255,255,.1); border-radius:12px; padding:8px 6px; text-align:center;}
@@ -130,6 +132,9 @@
   .img-box svg{width:22px; height:22px; color:var(--dark-15);}
   .img-btn{font-size:12px; font-weight:600; color:var(--dark); background:var(--dark-5); border:none; padding:8px 12px; border-radius:10px; cursor:pointer; font-family:inherit;}
   .img-remove{display:block; margin-top:6px; font-size:11px; color:var(--danger); background:none; border:none; cursor:pointer; padding:0; font-family:inherit;}
+  .cover-box{width:100%; aspect-ratio:16/6; border-radius:14px; background:var(--dark); border:2px dashed var(--dark-15); display:flex; align-items:center; justify-content:center; overflow:hidden; cursor:pointer; padding:0; margin-bottom:8px;}
+  .cover-box img{width:100%; height:100%; object-fit:cover;}
+  .cover-box svg{width:22px; height:22px; color:rgba(255,255,255,.3);}
   .chips{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;}
   .chip{font-size:11px; font-weight:600; padding:5px 10px; border-radius:999px; background:var(--dark-5); color:var(--dark-60); border:none; cursor:pointer; font-family:inherit;}
   .vrow{display:flex; align-items:center; gap:8px; margin-top:8px;}
@@ -164,7 +169,10 @@
         <h1>ຄັງເສື້ອຜ້າ</h1>
         <p>ຈັດການສະຕັອກຕາມຂະໜາດ</p>
       </div>
-      <button class="header-icon-btn" id="backup-open-btn"></button>
+      <div class="header-actions">
+        <button class="header-icon-btn" id="brand-open-btn"></button>
+        <button class="header-icon-btn" id="backup-open-btn"></button>
+      </div>
     </div>
     <div class="stats" id="stats"></div>
   </div>
@@ -183,6 +191,7 @@
 
 <div id="modal-root"></div>
 <div id="detail-root"></div>
+<div id="brand-root"></div>
 <div id="backup-root"></div>
 <div id="confirm-root"></div>
 <div id="toast-root"></div>
@@ -256,7 +265,6 @@ function renderStats(){
     <div class="stat"><div class="stat-label">ຈຳນວນລວມ</div><div class="stat-value">${totalQty}</div></div>
     <div class="stat ${lowCount>0?'warn':''}"><div class="stat-label">ໃກ້ໝົດ</div><div class="stat-value">${lowCount}</div></div>
   `;
-  document.querySelector('.logo').innerHTML = ICONS.package;
 }
 
 /* ---------- TABS ---------- */
@@ -679,6 +687,113 @@ function renderConfirm(){
   document.getElementById('do-del-btn').addEventListener('click', doDelete);
 }
 
+/* ---------- BRAND CUSTOMIZATION (logo + header cover) ---------- */
+const LOGO_KEY = 'khang-sinkha-logo-img';
+const COVER_KEY = 'khang-sinkha-cover-img';
+let logoImg = localStorage.getItem(LOGO_KEY) || null;
+let coverImg = localStorage.getItem(COVER_KEY) || null;
+
+function applyHeaderBrand(){
+  const logoEl = document.querySelector('.logo');
+  if(logoImg){
+    logoEl.style.background = 'none';
+    logoEl.innerHTML = `<img src="${logoImg}" alt="logo">`;
+  } else {
+    logoEl.style.background = 'var(--accent)';
+    logoEl.innerHTML = ICONS.package;
+  }
+  const headerEl = document.querySelector('.header');
+  if(coverImg){
+    headerEl.style.backgroundImage = `linear-gradient(180deg, rgba(28,43,51,.55), rgba(28,43,51,.88)), url('${coverImg}')`;
+  } else {
+    headerEl.style.backgroundImage = '';
+  }
+}
+
+function openBrandModal(){ renderBrandModal(); }
+function closeBrandModal(){ document.getElementById('brand-root').innerHTML=''; }
+
+function renderBrandModal(){
+  const root = document.getElementById('brand-root');
+  root.innerHTML = `
+    <div class="overlay" id="brand-overlay">
+      <div class="modal" id="brand-modal">
+        <div class="modal-head">
+          <h2>ປັບແຕ່ງ Logo ແລະ Header</h2>
+          <button class="icon-x" id="brand-close">${ICONS.x}</button>
+        </div>
+
+        <div class="report-card" style="margin-top:4px;">
+          <p style="font-weight:600; font-size:14px; margin:0 0 4px;">ຮູບພື້ນຫຼັງ Header (Cover)</p>
+          <p class="muted" style="margin:0 0 10px;">ຮູບກວ້າງຈະສວຍທີ່ສຸດ, ລະບົບຈະໃສ່ໂຕນສີເຂັ້ມທັບໃຫ້ໂຕໜັງສືອ່ານໄດ້ຊັດ</p>
+          <button type="button" class="cover-box" id="cover-pick-btn">${coverImg ? '<img src="'+coverImg+'" alt="">' : ICONS.image}</button>
+          <div style="display:flex; gap:8px;">
+            <button type="button" class="img-btn" id="cover-pick-btn2">${coverImg ? 'ປ່ຽນຮູບ' : 'ເລືອກຮູບ Cover'}</button>
+            ${coverImg ? '<button type="button" class="img-btn" id="cover-remove-btn" style="color:var(--danger);">ໃຊ້ຄ່າເລີ່ມຕົ້ນ</button>' : ''}
+          </div>
+          <input type="file" accept="image/*" id="cover-input" style="display:none">
+        </div>
+
+        <div class="report-card">
+          <p style="font-weight:600; font-size:14px; margin:0 0 4px;">Logo</p>
+          <p class="muted" style="margin:0 0 10px;">ຮູບສີ່ຫຼ່ຽມ ຈະຖືກຕັດເປັນສີ່ຫຼ່ຽມມົນອັດຕະໂນມັດ</p>
+          <div class="img-picker">
+            <button type="button" class="img-box" id="logo-pick-btn">${logoImg ? '<img src="'+logoImg+'" alt="">' : ICONS.package}</button>
+            <div>
+              <button type="button" class="img-btn" id="logo-pick-btn2">${logoImg ? 'ປ່ຽນຮູບ' : 'ເລືອກຮູບ Logo'}</button>
+              ${logoImg ? '<button type="button" class="img-remove" id="logo-remove-btn">ໃຊ້ຄ່າເລີ່ມຕົ້ນ</button>' : ''}
+            </div>
+            <input type="file" accept="image/*" id="logo-input" style="display:none">
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById('brand-overlay').addEventListener('click', e=>{ if(e.target.id==='brand-overlay') closeBrandModal(); });
+  document.getElementById('brand-close').addEventListener('click', closeBrandModal);
+
+  document.getElementById('cover-pick-btn').addEventListener('click', ()=>document.getElementById('cover-input').click());
+  document.getElementById('cover-pick-btn2').addEventListener('click', ()=>document.getElementById('cover-input').click());
+  document.getElementById('cover-input').addEventListener('change', e=>handleBrandImagePick(e, 'cover'));
+  const coverRemoveBtn = document.getElementById('cover-remove-btn');
+  if(coverRemoveBtn) coverRemoveBtn.addEventListener('click', ()=>{
+    coverImg = null;
+    localStorage.removeItem(COVER_KEY);
+    applyHeaderBrand();
+    renderBrandModal();
+    scheduleAutoSync();
+  });
+
+  document.getElementById('logo-pick-btn').addEventListener('click', ()=>document.getElementById('logo-input').click());
+  document.getElementById('logo-pick-btn2').addEventListener('click', ()=>document.getElementById('logo-input').click());
+  document.getElementById('logo-input').addEventListener('change', e=>handleBrandImagePick(e, 'logo'));
+  const logoRemoveBtn = document.getElementById('logo-remove-btn');
+  if(logoRemoveBtn) logoRemoveBtn.addEventListener('click', ()=>{
+    logoImg = null;
+    localStorage.removeItem(LOGO_KEY);
+    applyHeaderBrand();
+    renderBrandModal();
+    scheduleAutoSync();
+  });
+}
+
+function handleBrandImagePick(e, kind){
+  const file = e.target.files && e.target.files[0];
+  if(!file) return;
+  const opts = kind === 'logo' ? [320, 0.85] : [1000, 0.72];
+  resizeImage(file, opts[0], opts[1]).then(dataUrl=>{
+    try{
+      if(kind === 'logo'){ logoImg = dataUrl; localStorage.setItem(LOGO_KEY, dataUrl); }
+      else { coverImg = dataUrl; localStorage.setItem(COVER_KEY, dataUrl); }
+      applyHeaderBrand();
+      renderBrandModal();
+      scheduleAutoSync();
+    }catch(err){
+      showToast('ຮູບໃຫຍ່ເກີນໄປ, ລອງເລືອກຮູບອື່ນ');
+    }
+  }).catch(()=>{ showToast('ເລືອກຮູບບໍ່ສຳເລັດ'); });
+}
+
 /* ---------- GOOGLE DRIVE SYNC ---------- */
 const GDRIVE_CLIENT_ID_KEY = 'khang-sinkha-gdrive-client-id';
 const GDRIVE_FILE_ID_KEY = 'khang-sinkha-gdrive-file-id';
@@ -764,7 +879,7 @@ async function syncToDrive(silent){
     const ok = await ensureToken();
     if(!ok){ if(!silent) showToast('ຍັງບໍ່ໄດ້ເຊື່ອມຕໍ່ Google Drive'); return; }
     let fileId = await findDriveFileId();
-    const payload = JSON.stringify({ app:'khang-sinkha', version:1, exportedAt:new Date().toISOString(), products });
+    const payload = JSON.stringify({ app:'khang-sinkha', version:1, exportedAt:new Date().toISOString(), products, logo:logoImg, cover:coverImg });
     if(!fileId){
       const metadata = { name: DRIVE_FILE_NAME, mimeType: 'application/json' };
       const boundary = '-------khangsinkha' + Date.now();
@@ -804,7 +919,7 @@ async function syncFromDrive(){
     const parsed = await res.json();
     const list = Array.isArray(parsed) ? parsed : parsed.products;
     if(!Array.isArray(list)) throw new Error('bad format');
-    pendingImportData = list;
+    pendingImportData = { products:list, logo: Array.isArray(parsed) ? null : (parsed.logo || null), cover: Array.isArray(parsed) ? null : (parsed.cover || null) };
     renderImportConfirm();
   } catch(e){
     showToast('ດຶງຂໍ້ມູນຈາກ Drive ບໍ່ສຳເລັດ');
@@ -852,7 +967,7 @@ function renderBackupModal(){
 
         <div class="report-card" style="margin-top:4px;">
           <p style="font-weight:600; font-size:14px; margin:0 0 4px;">ສຳຮອງເປັນໄຟລ໌ (.json)</p>
-          <p class="muted" style="margin:0 0 10px; line-height:1.5;">ດາວໂຫຼດຂໍ້ມູນທັງໝົດ ແລ້ວແຊຣ໌ໄປບັນທຶກໃສ່ Google Drive ໄດ້ດ້ວຍຕົນເອງ</p>
+          <p class="muted" style="margin:0 0 10px; line-height:1.5;">ດາວໂຫຼດຂໍ້ມູນທັງໝົດ (ລວມທັງ Logo/Cover) ແລ້ວແຊຣ໌ໄປບັນທຶກໃສ່ Google Drive ໄດ້ດ້ວຍຕົນເອງ</p>
           <button type="button" class="submit-btn" id="export-btn" style="margin-top:0;">${ICONS.cloud} ດາວໂຫຼດໄຟລ໌ສຳຮອງ</button>
           <p class="muted" style="margin-top:8px;">ສຳຮອງລ່າສຸດ: ${esc(lastText)}</p>
         </div>
@@ -917,7 +1032,7 @@ function renderBackupModal(){
 }
 
 function exportData(){
-  const payload = { app:'khang-sinkha', version:1, exportedAt:new Date().toISOString(), products };
+  const payload = { app:'khang-sinkha', version:1, exportedAt:new Date().toISOString(), products, logo:logoImg, cover:coverImg };
   const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -941,7 +1056,7 @@ function handleImportFile(e){
       if(!Array.isArray(list)) throw new Error('bad format');
       const valid = list.every(p => p && typeof p.name === 'string');
       if(!valid) throw new Error('bad format');
-      pendingImportData = list;
+      pendingImportData = { products:list, logo: Array.isArray(parsed) ? null : (parsed.logo || null), cover: Array.isArray(parsed) ? null : (parsed.cover || null) };
       renderImportConfirm();
     }catch(err){
       showToast('ໄຟລ໌ບໍ່ຖືກຕ້ອງ, ບໍ່ສາມາດນຳເຂົ້າໄດ້');
@@ -953,11 +1068,12 @@ function handleImportFile(e){
 
 function renderImportConfirm(){
   const root = document.getElementById('confirm-root');
+  const brandNote = (pendingImportData.logo || pendingImportData.cover) ? ' ພ້ອມທັງ Logo/Cover ທີ່ບັນທຶກໄວ້.' : '';
   root.innerHTML = `
     <div class="overlay center" id="import-overlay">
       <div class="confirm-box">
         <p class="title">ນຳເຂົ້າຂໍ້ມູນ?</p>
-        <p class="desc">ພົບ ${pendingImportData.length} ລາຍການໃນໄຟລ໌ສຳຮອງ. ການນຳເຂົ້າຈະທັບຂໍ້ມູນປັດຈຸບັນທັງໝົດ ແລະ ບໍ່ສາມາດກູ້ຄືນໄດ້.</p>
+        <p class="desc">ພົບ ${pendingImportData.products.length} ລາຍການໃນໄຟລ໌ສຳຮອງ.${brandNote} ການນຳເຂົ້າຈະທັບຂໍ້ມູນປັດຈຸບັນທັງໝົດ ແລະ ບໍ່ສາມາດກູ້ຄືນໄດ້.</p>
         <div class="confirm-actions">
           <button class="btn-cancel" id="import-cancel-btn">ຍົກເລີກ</button>
           <button class="btn-confirm" id="import-ok-btn">ນຳເຂົ້າ</button>
@@ -968,7 +1084,7 @@ function renderImportConfirm(){
   document.getElementById('import-overlay').addEventListener('click', e=>{ if(e.target.id==='import-overlay'){ pendingImportData=null; root.innerHTML=''; }});
   document.getElementById('import-cancel-btn').addEventListener('click', ()=>{ pendingImportData=null; root.innerHTML=''; });
   document.getElementById('import-ok-btn').addEventListener('click', ()=>{
-    products = pendingImportData.map(p => ({
+    products = pendingImportData.products.map(p => ({
       id: p.id || uid(),
       name: p.name || '',
       code: p.code || '',
@@ -980,6 +1096,8 @@ function renderImportConfirm(){
         ? p.variants.map(v => ({ id:v.id || uid(), size:v.size || 'ທົ່ວໄປ', qty:Number(v.qty) || 0 }))
         : [{ id:uid(), size:'ທົ່ວໄປ', qty:0 }]
     }));
+    if(pendingImportData.logo){ logoImg = pendingImportData.logo; localStorage.setItem(LOGO_KEY, logoImg); }
+    if(pendingImportData.cover){ coverImg = pendingImportData.cover; localStorage.setItem(COVER_KEY, coverImg); }
     save();
     pendingImportData = null;
     root.innerHTML = '';
@@ -1020,12 +1138,15 @@ document.getElementById('fab-add').addEventListener('click', openAdd);
 document.getElementById('fab-add').innerHTML = ICONS.plus;
 document.getElementById('backup-open-btn').addEventListener('click', openBackupModal);
 document.getElementById('backup-open-btn').innerHTML = ICONS.cloud;
+document.getElementById('brand-open-btn').addEventListener('click', openBrandModal);
+document.getElementById('brand-open-btn').innerHTML = ICONS.image;
 
 /* ---------- MAIN RENDER ---------- */
 function renderAll(){
   renderStats();
   renderTabButtons();
   renderContent();
+  applyHeaderBrand();
 }
 renderAll();
 
