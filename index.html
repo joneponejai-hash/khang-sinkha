@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>ໂປຣແກຣມຈັດການສະຕ໋ອກສິນຄ້າ - ຂອງຮ້ານ MEN SHOP</title>
+<title>ຄັງເສື້ອຜ້າ - ຈັດການສະຕັອກ</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Lao:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -966,37 +966,34 @@ function renderBackupModal(){
         </div>
 
         <div class="report-card" style="margin-top:4px;">
-          <p style="font-weight:600; font-size:14px; margin:0 0 4px;">ສຳຮອງເປັນໄຟລ໌ (.json)</p>
-          <p class="muted" style="margin:0 0 10px; line-height:1.5;">ດາວໂຫຼດຂໍ້ມູນທັງໝົດ (ລວມທັງ Logo/Cover) ແລ້ວແຊຣ໌ໄປບັນທຶກໃສ່ Google Drive ໄດ້ດ້ວຍຕົນເອງ</p>
-          <button type="button" class="submit-btn" id="export-btn" style="margin-top:0;">${ICONS.cloud} ດາວໂຫຼດໄຟລ໌ສຳຮອງ</button>
-          <p class="muted" style="margin-top:8px;">ສຳຮອງລ່າສຸດ: ${esc(lastText)}</p>
-        </div>
-
-        <div class="report-card">
-          <p style="font-weight:600; font-size:14px; margin:0 0 4px;">ກູ້ຄືນຈາກໄຟລ໌</p>
-          <p class="muted" style="margin:0 0 10px; line-height:1.5;">ເລືອກໄຟລ໌ .json (ສາມາດເລືອກຈາກ Google Drive ໄດ້ໂດຍກົງໃນໜ້າຕ່າງເລືອກໄຟລ໌)</p>
-          <button type="button" class="submit-btn" id="import-btn" style="margin-top:0; background:var(--dark-5); color:var(--dark);">${ICONS.upload} ເລືອກໄຟລ໌ສຳຮອງ</button>
-          <input type="file" accept="application/json,.json" id="restore-input" style="display:none">
-        </div>
-
-        <div class="report-card">
-          <p style="font-weight:600; font-size:14px; margin:0 0 4px;">Google Drive Sync ອັດຕະໂນມັດ</p>
-          ${isFile ? `<p class="muted" style="margin:0 0 10px; line-height:1.5; color:var(--danger);">ໜ້ານີ້ຍັງເປີດແບບໄຟລ໌ໃນເຄື່ອງ (file://) — Google ບໍ່ອະນຸຍາດ login ຈາກໄຟລ໌ local. ຕ້ອງຝາກໄຟລ໌ນີ້ຂຶ້ນເວັບ (https) ກ່ອນ ຈຶ່ງຈະໃຊ້ Sync ໄດ້.</p>`
-            : `<p class="muted" style="margin:0 0 8px; line-height:1.5;">Origin ຂອງໜ້ານີ້ (ໃສ່ໃນ Authorized JavaScript origins): <b style="color:var(--dark); font-family:monospace;">${esc(location.origin)}</b></p>`}
-          <div class="field" style="margin-bottom:8px;">
-            <label>Google OAuth Client ID</label>
-            <input id="f-clientid" value="${esc(clientId)}" placeholder="xxxxx.apps.googleusercontent.com" ${isFile?'disabled':''}>
-          </div>
-          <button type="button" class="submit-btn" id="save-clientid-btn" style="margin-top:0; margin-bottom:10px; background:var(--dark-5); color:var(--dark);" ${isFile?'disabled':''}>ບັນທຶກ Client ID</button>
-          ${connected
-            ? `<div style="display:flex; gap:8px; margin-bottom:8px;">
-                 <button type="button" class="submit-btn" id="sync-now-btn" style="margin-top:0; flex:1;">${ICONS.cloud} Sync ດຽວນີ້</button>
-                 <button type="button" class="submit-btn" id="sync-pull-btn" style="margin-top:0; flex:1; background:var(--dark-5); color:var(--dark);">${ICONS.upload} ດຶງຈາກ Drive</button>
-               </div>
-               <p class="muted" style="margin:0 0 8px;">ເຊື່ອມຕໍ່ແລ້ວ &middot; Sync ລ່າສຸດ: ${esc(lastSyncText)}</p>
-               <button type="button" class="img-remove" id="disconnect-btn">ຍົກເລີກການເຊື່ອມຕໍ່</button>`
-            : `<button type="button" class="submit-btn" id="connect-drive-btn" style="margin-top:0;" ${isFile?'disabled':''}>${ICONS.cloud} ເຊື່ອມຕໍ່ Google Drive</button>`
+          <p style="font-weight:600; font-size:14px; margin:0 0 4px;">Google Drive</p>
+          ${isFile ? `<p class="muted" style="margin:0 0 10px; line-height:1.5; color:var(--danger);">ໜ້ານີ້ຍັງເປີດແບບໄຟລ໌ໃນເຄື່ອງ (file://) — Google ບໍ່ອະນຸຍາດ login ຈາກໄຟລ໌ local. ຕ້ອງຝາກໄຟລ໌ນີ້ຂຶ້ນເວັບ (https) ກ່ອນ ຈຶ່ງຈະໃຊ້ Drive ໄດ້. ໃນລະຫວ່າງນີ້ໃຊ້ວິທີສຳຮອງເປັນໄຟລ໌ດ້ານລຸ່ມໄປກ່ອນໄດ້.</p>`
+            : connected
+              ? `<p class="muted" style="margin:0 0 10px; line-height:1.5;">ກົດປຸ່ມດຽວ ບໍ່ຕ້ອງດາວໂຫຼດຫຼືອັບໂຫຼດໄຟລ໌ເອງ — ຂໍ້ມູນຈະ sync ອັດຕະໂນມັດຢູ່ແລ້ວທຸກຄັ້ງທີ່ມີການປ່ຽນແປງນຳ</p>
+                 <div style="display:flex; gap:8px; margin-bottom:8px;">
+                   <button type="button" class="submit-btn" id="sync-now-btn" style="margin-top:0; flex:1;">${ICONS.cloud} ສຳຮອງຂໍ້ມູນສູ່ Drive</button>
+                   <button type="button" class="submit-btn" id="sync-pull-btn" style="margin-top:0; flex:1; background:var(--dark-5); color:var(--dark);">${ICONS.upload} ກູ້ຄືນຈາກ Drive</button>
+                 </div>
+                 <p class="muted" style="margin:0 0 8px;">ເຊື່ອມຕໍ່ແລ້ວ &middot; Sync ລ່າສຸດ: ${esc(lastSyncText)}</p>
+                 <button type="button" class="img-remove" id="disconnect-btn">ຍົກເລີກການເຊື່ອມຕໍ່</button>`
+              : `<p class="muted" style="margin:0 0 8px; line-height:1.5;">ເຊື່ອມຕໍ່ຄັ້ງດຽວ ຈາກນັ້ນສຳຮອງ/ກູ້ຄືນໄດ້ດ້ວຍການກົດປຸ່ມດຽວທຸກຄັ້ງ. Origin ຂອງໜ້ານີ້ (ໃສ່ໃນ Authorized JavaScript origins): <b style="color:var(--dark); font-family:monospace;">${esc(location.origin)}</b></p>
+                 <div class="field" style="margin-bottom:8px;">
+                   <label>Google OAuth Client ID</label>
+                   <input id="f-clientid" value="${esc(clientId)}" placeholder="xxxxx.apps.googleusercontent.com">
+                 </div>
+                 <button type="button" class="submit-btn" id="connect-drive-btn" style="margin-top:0;">${ICONS.cloud} ເຊື່ອມຕໍ່ Google Drive</button>`
           }
+        </div>
+
+        <div class="report-card">
+          <p style="font-weight:600; font-size:14px; margin:0 0 4px;">${connected ? 'ຫຼື ສຳຮອງເປັນໄຟລ໌ (.json)' : 'ສຳຮອງເປັນໄຟລ໌ (.json)'}</p>
+          <p class="muted" style="margin:0 0 10px; line-height:1.5;">ວິທີສຳຮອງດ້ວຍຕົນເອງ — ດາວໂຫຼດເປັນໄຟລ໌ ແລ້ວເລືອກໄຟລ໌ນັ້ນຄືນເພື່ອກູ້ຄືນ (ໃຊ້ໄດ້ເລີຍໂດຍບໍ່ຕ້ອງຕັ້ງຄ່າ Drive)</p>
+          <div style="display:flex; gap:8px; margin-bottom:8px;">
+            <button type="button" class="submit-btn" id="export-btn" style="margin-top:0; flex:1;">${ICONS.cloud} ດາວໂຫຼດໄຟລ໌</button>
+            <button type="button" class="submit-btn" id="import-btn" style="margin-top:0; flex:1; background:var(--dark-5); color:var(--dark);">${ICONS.upload} ເລືອກໄຟລ໌</button>
+          </div>
+          <input type="file" accept="application/json,.json" id="restore-input" style="display:none">
+          <p class="muted" style="margin-top:4px;">ສຳຮອງເປັນໄຟລ໌ລ່າສຸດ: ${esc(lastText)}</p>
         </div>
       </div>
     </div>
@@ -1008,11 +1005,6 @@ function renderBackupModal(){
   document.getElementById('restore-input').addEventListener('change', handleImportFile);
 
   const clientIdInput = document.getElementById('f-clientid');
-  document.getElementById('save-clientid-btn').addEventListener('click', ()=>{
-    localStorage.setItem(GDRIVE_CLIENT_ID_KEY, clientIdInput.value.trim());
-    showToast('ບັນທຶກ Client ID ແລ້ວ');
-  });
-
   const connectBtn = document.getElementById('connect-drive-btn');
   if(connectBtn) connectBtn.addEventListener('click', async ()=>{
     localStorage.setItem(GDRIVE_CLIENT_ID_KEY, clientIdInput.value.trim());
