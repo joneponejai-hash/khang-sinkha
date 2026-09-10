@@ -2,8 +2,16 @@
 <html lang="lo">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
 <title>ຄັງເສື້ອຜ້າ - ຈັດການສະຕັອກ</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1C2B33">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ຄັງເສື້ອຜ້າ">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Lao:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -36,7 +44,7 @@
   .stat-value{font-size:18px; font-weight:700; font-variant-numeric:tabular-nums;}
   .stat.warn .stat-value{color:var(--dark);}
   .tabs{display:flex; gap:8px; padding:16px 20px 0;}
-  .tab-btn{flex:1; display:flex; align-items:center; justify-content:center; gap:6px; padding:10px; border-radius:12px; font-size:14px; font-weight:600; border:1px solid var(--dark-10); background:#fff; color:var(--dark-60); cursor:pointer;}
+  .tab-btn{flex:1; display:flex; align-items:center; justify-content:center; gap:5px; padding:10px 4px; border-radius:12px; font-size:12.5px; font-weight:600; border:1px solid var(--dark-10); background:#fff; color:var(--dark-60); cursor:pointer; white-space:nowrap;}
   .tab-btn.active{background:var(--dark); color:#fff; border-color:var(--dark);}
   .tab-btn svg{width:16px; height:16px;}
   .content{padding:16px 20px 0;}
@@ -63,6 +71,8 @@
   .grid-tags{display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; min-height:18px;}
   .grid-qty{display:flex; align-items:baseline; justify-content:space-between; margin-top:8px;}
   .grid-qty .total{font-family:monospace; font-weight:700; font-size:16px; color:var(--dark);}
+  .icon-btn-sm{width:32px; height:32px; border-radius:10px; background:var(--danger-10); border:none; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0;}
+  .icon-btn-sm svg{width:14px; height:14px; color:var(--danger);}
   .detail-img{width:100%; aspect-ratio:1/1; max-height:260px; border-radius:16px; background:var(--dark-5); overflow:hidden; display:flex; align-items:center; justify-content:center; margin-bottom:12px;}
   .detail-img img{width:100%; height:100%; object-fit:cover;}
   .detail-img svg{width:40px; height:40px; color:var(--dark-15);}
@@ -161,6 +171,7 @@
 </style>
 </head>
 <body>
+<div id="install-banner-root"></div>
 <div id="app">
   <div class="header">
     <div class="header-top">
@@ -180,6 +191,7 @@
   <div class="tabs">
     <button class="tab-btn active" id="tab-list-btn" data-tab="list"></button>
     <button class="tab-btn" id="tab-report-btn" data-tab="report"></button>
+    <button class="tab-btn" id="tab-barcode-btn" data-tab="barcode"></button>
   </div>
 
   <div class="content" id="content"></div>
@@ -193,6 +205,7 @@
 <div id="detail-root"></div>
 <div id="brand-root"></div>
 <div id="backup-root"></div>
+<div id="scanner-root"></div>
 <div id="confirm-root"></div>
 <div id="toast-root"></div>
 
@@ -217,7 +230,8 @@ const ICONS = {
   chevronRight: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>',
   cloud: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19a4.5 4.5 0 0 0 0-9h-1.26a8 8 0 1 0-14.24 5.24"/><path d="M12 12v9"/><path d="m8 17 4 4 4-4"/></svg>',
   upload: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>',
-  grid: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>'
+  grid: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>',
+  barcode: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 5v14"/><path d="M7 5v14"/><path d="M11 5v14"/><path d="M13.5 5v14"/><path d="M17 5v14"/><path d="M21 5v14"/></svg>'
 };
 
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
@@ -234,6 +248,12 @@ let detailId = null;
 let formState = null;
 let confirmDeleteId = null;
 let toastTimer = null;
+let barcodeSearch = '';
+
+const SCANLOG_KEY = 'khang-sinkha-scanlog-v1';
+let scanLog = [];
+try{ scanLog = JSON.parse(localStorage.getItem(SCANLOG_KEY) || '[]'); }catch(e){ scanLog = []; }
+function saveScanLog(){ try{ localStorage.setItem(SCANLOG_KEY, JSON.stringify(scanLog)); }catch(e){} }
 
 function save(){
   try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(products)); }
@@ -271,8 +291,10 @@ function renderStats(){
 function renderTabButtons(){
   document.getElementById('tab-list-btn').innerHTML = ICONS.list + ' ລາຍການ';
   document.getElementById('tab-report-btn').innerHTML = ICONS.chart + ' ລາຍງານ';
+  document.getElementById('tab-barcode-btn').innerHTML = ICONS.barcode + ' Barcode';
   document.getElementById('tab-list-btn').classList.toggle('active', tab==='list');
   document.getElementById('tab-report-btn').classList.toggle('active', tab==='report');
+  document.getElementById('tab-barcode-btn').classList.toggle('active', tab==='barcode');
 }
 
 /* ---------- LIST TAB ---------- */
@@ -296,8 +318,10 @@ function renderContent(){
     document.getElementById('view-list-btn').addEventListener('click', ()=>setViewMode('list'));
     document.getElementById('view-grid-btn').addEventListener('click', ()=>setViewMode('grid'));
     renderListItems();
-  } else {
+  } else if(tab === 'report'){
     renderReport();
+  } else if(tab === 'barcode'){
+    renderBarcodeTab();
   }
 }
 
@@ -424,6 +448,161 @@ function renderDetailSheet(){
 }
 
 /* ---------- REPORT TAB ---------- */
+/* ---------- BARCODE TAB ---------- */
+function renderBarcodeTab(){
+  const content = document.getElementById('content');
+  const lastSheetSync = localStorage.getItem(SHEET_LAST_SYNC_KEY);
+  const lastSheetSyncText = lastSheetSync ? new Date(lastSheetSync).toLocaleString('lo-LA') : 'ຍັງບໍ່ເຄີຍ';
+  const unsyncedCount = scanLog.filter(r=>!r.syncedToSheet).length;
+  content.innerHTML = `
+    <button type="button" class="submit-btn" id="open-scanner-btn" style="margin-top:0; margin-bottom:12px;">${ICONS.barcode} ສະແກນ Barcode ໃໝ່</button>
+    <div class="search-wrap"><span style="position:absolute; left:12px; top:50%; transform:translateY(-50%); width:16px; height:16px; color:var(--dark-40); display:flex;">${ICONS.search}</span><input id="barcode-search-input" placeholder="ຄົ້ນຫາຕາມລະຫັດ Barcode..." value="${esc(barcodeSearch)}"></div>
+    <div class="report-card" style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:12px;">
+      <div style="min-width:0;">
+        <p style="font-size:12px; font-weight:600; margin:0;">Google Sheet</p>
+        <p class="muted" style="margin:2px 0 0;">Sync ລ່າສຸດ: ${esc(lastSheetSyncText)}${unsyncedCount>0 ? ' &middot; '+unsyncedCount+' ລາຍການໃໝ່' : ''}</p>
+      </div>
+      <button type="button" id="sync-sheet-btn" style="background:var(--dark-5); color:var(--dark); border:none; padding:8px 14px; border-radius:10px; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; flex-shrink:0; display:flex; align-items:center; gap:5px;">${ICONS.upload} Sync</button>
+    </div>
+    <div id="barcode-list" style="margin-top:12px;"></div>
+  `;
+  document.getElementById('open-scanner-btn').addEventListener('click', openScanner);
+  document.getElementById('barcode-search-input').addEventListener('input', e=>{ barcodeSearch = e.target.value; renderBarcodeList(); });
+  document.getElementById('sync-sheet-btn').addEventListener('click', syncScanLogToSheet);
+  renderBarcodeList();
+}
+
+function renderBarcodeList(){
+  const container = document.getElementById('barcode-list');
+  if(!container) return;
+  const filtered = scanLog.filter(r => r.code.toLowerCase().includes(barcodeSearch.toLowerCase()));
+  if(filtered.length === 0){
+    container.innerHTML = `<div class="empty">${ICONS.barcode}<p>${scanLog.length===0 ? 'ຍັງບໍ່ມີການສະແກນ, ກົດປຸ່ມເທິງເພື່ອເລີ່ມ' : 'ບໍ່ພົບລະຫັດທີ່ຄົ້ນຫາ'}</p></div>`;
+    return;
+  }
+  container.innerHTML = filtered.map(r => `
+    <div class="card">
+      <div class="card-strip" style="background:${r.matchedProductId?'#4C7A5E':'#B94A3D'}"></div>
+      <div class="card-row">
+        <button type="button" class="card-main" data-action="open-scan" data-scan-id="${r.id}">
+          <div class="card-title"><span style="font-family:monospace;">${esc(r.code)}</span></div>
+          <div class="card-sub">${new Date(r.scannedAt).toLocaleString('lo-LA')}</div>
+          <div class="tags">
+            <span class="tag ${r.matchedProductId?'':'low'}">${r.matchedProductId ? 'ພົບ: '+esc(r.matchedProductName) : 'ບໍ່ພົບສິນຄ້າ'}</span>
+            ${r.syncedToSheet ? '<span class="tag">Synced</span>' : ''}
+          </div>
+        </button>
+        <button type="button" class="icon-btn-sm" data-action="delete-scan" data-scan-id="${r.id}">${ICONS.trash}</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+/* ---------- BARCODE CAMERA SCANNER ---------- */
+let scannerStream = null;
+let scannerActive = false;
+let scannerRAF = null;
+
+function openScanner(){ renderScannerModal(); startScanner(); }
+function closeScanner(){ stopScanner(); document.getElementById('scanner-root').innerHTML=''; }
+
+function renderScannerModal(){
+  const root = document.getElementById('scanner-root');
+  const supported = 'BarcodeDetector' in window;
+  root.innerHTML = `
+    <div class="overlay" id="scanner-overlay" style="align-items:stretch; padding:0;">
+      <div style="width:100%; max-width:480px; margin:0 auto; background:#0a0a0a; position:relative; display:flex; flex-direction:column;">
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:16px;">
+          <span style="color:#fff; font-weight:600; font-size:14px;">ສະແກນ Barcode</span>
+          <button class="icon-x" id="scanner-close" style="background:rgba(255,255,255,.15);">${ICONS.x}</button>
+        </div>
+        ${supported ? `
+        <div style="position:relative; overflow:hidden; background:#000; aspect-ratio:3/4;">
+          <video id="scanner-video" autoplay playsinline muted style="width:100%; height:100%; object-fit:cover; display:block;"></video>
+          <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none;">
+            <div style="width:78%; aspect-ratio:2/1; border:3px solid var(--accent); border-radius:16px;"></div>
+          </div>
+        </div>
+        <p style="color:rgba(255,255,255,.55); font-size:12px; text-align:center; padding:12px;">ວາງ Barcode ໃຫ້ຢູ່ໃນກອບ, ຈະສະແກນອັດຕະໂນມັດ</p>
+        ` : `<div style="padding:30px 20px; text-align:center;"><p style="color:rgba(255,255,255,.55); font-size:13px;">ອຸປະກອນ ຫຼື browser ນີ້ບໍ່ຮອງຮັບການສະແກນອັດຕະໂນມັດ, ພິມລະຫັດດ້ານລຸ່ມແທນໄດ້</p></div>`}
+        <div style="padding:16px; background:#111; display:flex; gap:8px;">
+          <input id="manual-code-input" placeholder="ຫຼືພິມລະຫັດ Barcode ເອງ" style="flex:1; background:#222; border:1px solid rgba(255,255,255,.15); border-radius:12px; padding:10px 12px; font-size:14px; color:#fff; outline:none; font-family:inherit;">
+          <button id="manual-code-btn" style="background:var(--accent); color:var(--dark); border:none; border-radius:12px; padding:0 16px; font-weight:600; font-size:13px; cursor:pointer; font-family:inherit;">ບັນທຶກ</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById('scanner-close').addEventListener('click', closeScanner);
+  document.getElementById('manual-code-btn').addEventListener('click', ()=>{
+    const val = document.getElementById('manual-code-input').value.trim();
+    if(!val) return;
+    handleScanResult(val);
+  });
+  document.getElementById('manual-code-input').addEventListener('keydown', e=>{
+    if(e.key === 'Enter'){ const val = e.target.value.trim(); if(val) handleScanResult(val); }
+  });
+}
+
+async function startScanner(){
+  if(!('BarcodeDetector' in window)) return;
+  try{
+    scannerStream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:'environment' } });
+    const video = document.getElementById('scanner-video');
+    if(!video){ stopScanner(); return; }
+    video.srcObject = scannerStream;
+    await video.play();
+    const detector = new BarcodeDetector();
+    scannerActive = true;
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const loop = async () => {
+      if(!scannerActive) return;
+      if(video.videoWidth){
+        canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0);
+        try{
+          const codes = await detector.detect(canvas);
+          if(codes && codes.length){ handleScanResult(codes[0].rawValue); return; }
+        }catch(e){}
+      }
+      scannerRAF = requestAnimationFrame(loop);
+    };
+    loop();
+  }catch(e){
+    showToast('ເປີດກ້ອງບໍ່ສຳເລັດ, ກວດການອະນຸຍາດກ້ອງ');
+  }
+}
+
+function stopScanner(){
+  scannerActive = false;
+  if(scannerRAF) cancelAnimationFrame(scannerRAF);
+  scannerRAF = null;
+  if(scannerStream){ scannerStream.getTracks().forEach(t=>t.stop()); scannerStream = null; }
+}
+
+function recordScan(code){
+  const match = products.find(p => p.code && p.code.toLowerCase() === code.toLowerCase());
+  const entry = { id:uid(), code, scannedAt:new Date().toISOString(), matchedProductId: match ? match.id : null, matchedProductName: match ? match.name : null, syncedToSheet:false };
+  scanLog = [entry, ...scanLog];
+  saveScanLog();
+  return entry;
+}
+
+function handleScanResult(code){
+  stopScanner();
+  if(navigator.vibrate) navigator.vibrate(120);
+  const entry = recordScan(code);
+  closeScanner();
+  if(tab === 'barcode') renderBarcodeList();
+  if(entry.matchedProductId){
+    showToast('ພົບສິນຄ້າ: ' + entry.matchedProductName);
+    openDetail(entry.matchedProductId);
+  } else {
+    showToast('ບໍ່ພົບສິນຄ້າ, ເພີ່ມໃໝ່ໄດ້ເລີຍ');
+    openAdd(code);
+  }
+}
+
 function renderReport(){
   const content = document.getElementById('content');
   const list = products.map(withTotals);
@@ -474,8 +653,8 @@ function renderReport(){
 }
 
 /* ---------- MODAL (ADD/EDIT) ---------- */
-function openAdd(){
-  formState = { id:null, name:'', code:'', unit:'ໂຕ', price:'', minQty:'3', image:null, variants:[{id:uid(), size:'', qty:''}] };
+function openAdd(prefillCode){
+  formState = { id:null, name:'', code:prefillCode || '', unit:'ໂຕ', price:'', minQty:'3', image:null, variants:[{id:uid(), size:'', qty:''}] };
   renderModal();
 }
 function openEdit(id){
@@ -800,7 +979,10 @@ const GDRIVE_FILE_ID_KEY = 'khang-sinkha-gdrive-file-id';
 const GDRIVE_CONNECTED_KEY = 'khang-sinkha-gdrive-connected';
 const GDRIVE_LAST_SYNC_KEY = 'khang-sinkha-gdrive-last-sync';
 const DRIVE_FILE_NAME = 'khang-sinkha-backup.json';
-const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets';
+const SHEET_ID_KEY = 'khang-sinkha-sheet-id';
+const SHEET_LAST_SYNC_KEY = 'khang-sinkha-sheet-last-sync';
+const SHEET_TITLE = 'khang-sinkha-barcode-log';
 
 let tokenClient = null;
 let gdriveToken = null;
@@ -872,6 +1054,57 @@ async function findDriveFileId(){
     return fileId;
   }
   return null;
+}
+
+async function findOrCreateSheet(){
+  let sheetId = localStorage.getItem(SHEET_ID_KEY);
+  if(sheetId) return sheetId;
+  const q = encodeURIComponent(`name='${SHEET_TITLE}' and trashed=false and mimeType='application/vnd.google-apps.spreadsheet'`);
+  const res = await driveRequest(`https://www.googleapis.com/drive/v3/files?q=${q}&spaces=drive&fields=files(id,name)`);
+  const data = await res.json();
+  if(data.files && data.files.length){
+    sheetId = data.files[0].id;
+    localStorage.setItem(SHEET_ID_KEY, sheetId);
+    return sheetId;
+  }
+  const createRes = await driveRequest('https://sheets.googleapis.com/v4/spreadsheets', {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json' },
+    body: JSON.stringify({ properties:{ title: SHEET_TITLE }, sheets:[{ properties:{ title:'Log' } }] })
+  });
+  const createData = await createRes.json();
+  sheetId = createData.spreadsheetId;
+  localStorage.setItem(SHEET_ID_KEY, sheetId);
+  await driveRequest(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/Log!A1:D1?valueInputOption=RAW`, {
+    method:'PUT',
+    headers:{ 'Content-Type':'application/json' },
+    body: JSON.stringify({ values:[['ລະຫັດ Barcode','ວັນທີ-ເວລາ','ສະຖານະ','ຊື່ສິນຄ້າ']] })
+  });
+  return sheetId;
+}
+
+async function syncScanLogToSheet(){
+  try{
+    const ok = await ensureToken();
+    if(!ok){ showToast('ຍັງບໍ່ໄດ້ເຊື່ອມຕໍ່ Google'); return; }
+    const sheetId = await findOrCreateSheet();
+    const unsynced = scanLog.filter(r=>!r.syncedToSheet);
+    if(unsynced.length === 0){ showToast('ບໍ່ມີລາຍການໃໝ່ໃຫ້ sync'); return; }
+    const rows = unsynced.map(r => [r.code, new Date(r.scannedAt).toLocaleString('lo-LA'), r.matchedProductId ? 'ພົບສິນຄ້າ' : 'ບໍ່ພົບ', r.matchedProductName || '']);
+    await driveRequest(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/Log!A:D:append?valueInputOption=RAW`, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ values: rows })
+    });
+    const unsyncedIds = new Set(unsynced.map(r=>r.id));
+    scanLog = scanLog.map(r => unsyncedIds.has(r.id) ? { ...r, syncedToSheet:true } : r);
+    saveScanLog();
+    localStorage.setItem(SHEET_LAST_SYNC_KEY, new Date().toISOString());
+    showToast('ສົ່ງອອກ Log ໄປ Google Sheet ສຳເລັດ (' + unsynced.length + ' ລາຍການ)');
+    if(tab === 'barcode') renderBarcodeTab();
+  }catch(e){
+    showToast('ສົ່ງອອກບໍ່ສຳເລັດ, ລອງໃໝ່ອີກຄັ້ງ');
+  }
 }
 
 async function syncToDrive(silent){
@@ -1121,11 +1354,23 @@ document.addEventListener('click', e=>{
     save();
     renderAll();
     if(detailId === id) renderDetailSheet();
+  } else if(action === 'open-scan'){
+    const scanId = t.dataset.scanId;
+    const rec = scanLog.find(r=>r.id===scanId);
+    if(!rec) return;
+    if(rec.matchedProductId && products.find(p=>p.id===rec.matchedProductId)) openDetail(rec.matchedProductId);
+    else openAdd(rec.code);
+  } else if(action === 'delete-scan'){
+    const scanId = t.dataset.scanId;
+    scanLog = scanLog.filter(r=>r.id!==scanId);
+    saveScanLog();
+    renderBarcodeList();
   }
 });
 
 document.getElementById('tab-list-btn').addEventListener('click', ()=>{ tab='list'; renderTabButtons(); renderContent(); });
 document.getElementById('tab-report-btn').addEventListener('click', ()=>{ tab='report'; renderTabButtons(); renderContent(); });
+document.getElementById('tab-barcode-btn').addEventListener('click', ()=>{ tab='barcode'; renderTabButtons(); renderContent(); });
 document.getElementById('fab-add').addEventListener('click', openAdd);
 document.getElementById('fab-add').innerHTML = ICONS.plus;
 document.getElementById('backup-open-btn').addEventListener('click', openBackupModal);
@@ -1141,6 +1386,45 @@ function renderAll(){
   applyHeaderBrand();
 }
 renderAll();
+
+/* ---------- PWA: service worker + install prompt ---------- */
+if('serviceWorker' in navigator && location.protocol !== 'file:'){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('service-worker.js').catch(()=>{});
+  });
+}
+
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  showInstallBanner();
+});
+window.addEventListener('appinstalled', () => {
+  deferredInstallPrompt = null;
+  const b = document.getElementById('install-banner-root');
+  if(b) b.innerHTML = '';
+});
+
+function showInstallBanner(){
+  if(document.getElementById('install-banner')) return;
+  const root = document.getElementById('install-banner-root');
+  root.innerHTML = `
+    <div id="install-banner" style="position:sticky; top:0; z-index:5; background:var(--accent); color:var(--dark); display:flex; align-items:center; gap:10px; padding:10px 16px; font-size:12px; font-weight:600;">
+      <span style="flex:1;">ຕິດຕັ້ງແອັບນີ້ໃສ່ໜ້າຈໍຫຼັກໄດ້ເລີຍ</span>
+      <button id="install-btn" style="background:var(--dark); color:#fff; border:none; padding:7px 14px; border-radius:999px; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit;">ຕິດຕັ້ງ</button>
+      <button id="install-dismiss-btn" style="background:none; border:none; cursor:pointer; padding:4px; color:var(--dark);">${ICONS.x}</button>
+    </div>
+  `;
+  document.getElementById('install-btn').addEventListener('click', async ()=>{
+    if(!deferredInstallPrompt) return;
+    deferredInstallPrompt.prompt();
+    await deferredInstallPrompt.userChoice;
+    deferredInstallPrompt = null;
+    root.innerHTML = '';
+  });
+  document.getElementById('install-dismiss-btn').addEventListener('click', ()=>{ root.innerHTML=''; });
+}
 
 if(localStorage.getItem(GDRIVE_CONNECTED_KEY) && location.protocol !== 'file:'){
   ensureToken().catch(()=>{});
