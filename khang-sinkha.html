@@ -276,6 +276,34 @@
   ::-webkit-scrollbar{width:6px;}
   ::-webkit-scrollbar-thumb{background:var(--dark-15); border-radius:3px;}
 
+  /* ---------- TABLET (PORTRAIT / MID-WIDTH) LAYOUT ---------- */
+  /* Covers the gap between phones and the 860px+ desktop layout below, so tablets of
+     any size (portrait iPad/Android tablets typically fall in ~600-859px) use their
+     full width instead of showing the narrow 480px phone column with empty margins. */
+  @media (min-width: 600px) and (max-width: 859px){
+    body{ background:#E5E1D5; }
+    #app{ max-width:94vw; padding-bottom:120px; box-shadow:0 0 40px rgba(0,0,0,.06); }
+    .header{ padding:26px 28px 20px; }
+    .header-top{ max-width:640px; }
+    .stats{ max-width:520px; }
+    .tabs{ padding:16px 28px 0; }
+    .content{ padding:16px 28px 0; }
+    .search-row{ max-width:480px; }
+
+    .grid-container{ grid-template-columns:repeat(auto-fill, minmax(170px,1fr)) !important; gap:12px; }
+    #list-items:not(.grid-container){ display:grid; grid-template-columns:repeat(auto-fill, minmax(300px,1fr)); gap:10px; align-items:start; }
+    #list-items:not(.grid-container) .card{ margin-bottom:0; }
+
+    .report-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; align-items:start; }
+    .report-grid > .report-card{ margin-bottom:0; }
+    .report-grid > .report-card:last-child{ grid-column:1 / -1; }
+
+    .fab-anchor{ max-width:94vw; margin:0 auto; position:relative; }
+    .bottom-nav{ max-width:94vw; }
+    .overlay.center{ padding:0 40px; }
+    .modal{ max-width:600px; }
+  }
+
   /* ---------- DESKTOP / WIDE SCREEN LAYOUT ---------- */
   @media (min-width: 860px){
     body{ background:#E2DED2; }
@@ -1045,8 +1073,8 @@ function renderOrdersTab(){
       const freeShip = realQty > 1;
       const hasDiscount = getOrderDiscountPerUnit(realQty) > 0;
       return `
-      <div class="report-card" style="margin-bottom:12px;">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+      <div class="report-card" style="margin-bottom:12px; padding:0; overflow:hidden;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; background:rgba(232,163,61,.30); padding:16px;">
           <div style="min-width:0;">
             <p style="font-weight:700; font-size:15px; margin:0; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
               <span>${esc(o.customerName)}</span>
@@ -1069,10 +1097,10 @@ function renderOrdersTab(){
             ${hasDiscount ? `<span style="background:#7B4B24; color:#fff; font-size:9px; font-weight:700; padding:2px 7px; border-radius:999px; white-space:nowrap;">ໄດ້ຮັບສ່ວນຫຼຸດ</span>` : ''}
           </div>
         </div>
-        <div style="margin-top:10px;">
+        <div style="padding:10px 16px 16px; background:#fff;">
           ${o.items.map(it => `
             <div class="stock-item">
-              <span style="background:rgba(232,163,61,.75); color:var(--dark); font-weight:700; padding:3px 8px; border-radius:8px; display:inline-block;">${esc(it.productName)} (${esc(it.size)})</span>
+              <span style="color:var(--dark); font-weight:700;">${esc(it.productName)} (${esc(it.size)})</span>
               <span style="font-family:monospace;">x${it.qty}</span>
             </div>
           `).join('')}
