@@ -294,9 +294,10 @@
     #list-items:not(.grid-container){ display:grid; grid-template-columns:repeat(auto-fill, minmax(300px,1fr)); gap:10px; align-items:start; }
     #list-items:not(.grid-container) .card{ margin-bottom:0; }
 
-    .report-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; align-items:start; }
-    .report-grid > .report-card{ margin-bottom:0; }
-    .report-grid > .report-card:last-child{ grid-column:1 / -1; }
+    /* Report tab intentionally stays single-column (same as mobile) at every screen
+       size, per explicit request — a stacked list reads cleaner/more professional
+       than a 2-up grid, so .report-grid keeps its normal block flow here. */
+    .report-grid{ max-width:600px; margin:0 auto; }
 
     .fab-anchor{ max-width:94vw; margin:0 auto; position:relative; }
     .bottom-nav{ max-width:94vw; }
@@ -319,9 +320,10 @@
     #list-items .card{ margin-bottom:0; }
     .grid-container{ grid-template-columns:repeat(auto-fill, minmax(190px,1fr)) !important; }
 
-    .report-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; align-items:start; }
-    .report-grid > .report-card{ margin-bottom:0; }
-    .report-grid > .report-card:last-child{ grid-column:1 / -1; }
+    /* Report tab stays single-column (same as mobile) at every screen size, per
+       explicit request — a stacked list reads cleaner/more professional than a
+       2-up grid, so .report-grid keeps its normal block flow here too. */
+    .report-grid{ max-width:600px; margin:0 auto; }
 
     .fab-anchor{ max-width:1240px; margin:0 auto; position:relative; height:0; }
     .fab{ position:absolute; left:auto; right:32px; bottom:24px; transform:none; }
