@@ -1571,7 +1571,7 @@ function gridCardHtml(p){
         <button type="button" class="grid-dup-btn" data-action="duplicate-product" data-id="${p.id}">${ICONS.copy} ສ້າງຊ້ຳ</button>
       </div>
       <div class="grid-body" data-action="open-detail" data-id="${p.id}">
-        <button type="button" class="grid-messenger-btn" data-action="messenger-placeholder" data-id="${p.id}" title="Messenger"><img src="${MESSENGER_ICON}" alt="Messenger"></button>
+        <button type="button" class="grid-messenger-btn" data-action="messenger-placeholder" data-id="${p.id}" title="ແຊຣ໌ຂໍ້ມູນສິນຄ້າ"><img src="${MESSENGER_ICON}" alt="Messenger"></button>
         <div class="grid-title">${esc(p.name)}</div>
         <div class="grid-sub">${p.code?('#'+esc(p.code)+' &middot; '):''}${p.price>0?(Number(p.price).toLocaleString()+' ກີບ'):''}</div>
         <div class="grid-tags">${tagsHtml}</div>
@@ -2989,6 +2989,139 @@ function openDuplicate(id){
   renderModal();
   showToast('ສ້າງຊ້ຳຈາກ "' + p.name + '" — ກະລຸນາຕັ້ງຂະໜາດໃໝ່');
 }
+
+/* ---------- ແຊຣ໌ຂໍ້ມູນສິນຄ້າອອກເປັນຮູບພາບ (ປຸ່ມ Messenger) ---------- */
+function loadImageAsync(src){
+  return new Promise((resolve, reject)=>{
+    const img = new Image();
+    img.onload = ()=>resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+function roundRectPath(ctx, x, y, w, h, r){
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.arcTo(x+w, y, x+w, y+h, r);
+  ctx.arcTo(x+w, y+h, x, y+h, r);
+  ctx.arcTo(x, y+h, x, y, r);
+  ctx.arcTo(x, y, x+w, y, r);
+  ctx.closePath();
+}
+async function generateProductShareImage(p){
+  const W = 900, PAD = 40;
+  const imgSize = W - PAD*2;
+  const HEADER_H = 130;
+  const GAP1 = 30, TITLE_H = 48, SUB_H = 40;
+  const tagRows = Math.max(1, Math.ceil(p.variants.length / 4));
+  const TAGS_H = tagRows * 46;
+  const FOOTER_H = 80;
+  const H = HEADER_H + imgSize + GAP1 + TITLE_H + SUB_H + TAGS_H + FOOTER_H + PAD;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+
+  ctx.fillStyle = '#F6F4EF';
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.fillStyle = '#12213A';
+  ctx.fillRect(0, 0, W, HEADER_H);
+  try{
+    const logoImg = await loadImageAsync(STORE_LOGO);
+    ctx.save();
+    roundRectPath(ctx, 30, 25, 80, 80, 40);
+    ctx.clip();
+    ctx.drawImage(logoImg, 30, 25, 80, 80);
+    ctx.restore();
+  }catch(e){}
+  ctx.fillStyle = '#fff';
+  ctx.font = '700 30px "Noto Sans Lao", sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('M² MEN SHOP', 130, 62);
+  ctx.font = '400 16px "Noto Sans Lao", sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,.75)';
+  ctx.fillText('Est. 2016 · Official Store', 130, 90);
+
+  let y = HEADER_H + GAP1;
+  ctx.save();
+  roundRectPath(ctx, PAD, y, imgSize, imgSize, 24);
+  ctx.clip();
+  ctx.fillStyle = '#EAE6DC';
+  ctx.fillRect(PAD, y, imgSize, imgSize);
+  if(p.image){
+    try{
+      const pImg = await loadImageAsync(p.image);
+      const scale = Math.max(imgSize/pImg.width, imgSize/pImg.height);
+      const dw = pImg.width*scale, dh = pImg.height*scale;
+      ctx.drawImage(pImg, PAD+(imgSize-dw)/2, y+(imgSize-dh)/2, dw, dh);
+    }catch(e){}
+  }
+  ctx.restore();
+
+  y += imgSize + TITLE_H;
+  ctx.fillStyle = '#1C2B33';
+  ctx.font = '700 38px "Noto Sans Lao", sans-serif';
+  ctx.fillText(p.name, PAD, y);
+
+  y += SUB_H;
+  ctx.font = '600 26px "Noto Sans Lao", sans-serif';
+  ctx.fillStyle = '#2F6FED';
+  const subParts = [];
+  if(p.code) subParts.push('#'+p.code);
+  if(p.price>0) subParts.push(Number(p.price).toLocaleString()+' ກີບ');
+  ctx.fillText(subParts.join('   ·   '), PAD, y);
+
+  y += 30;
+  let tx = PAD, ty = y;
+  ctx.font = '700 22px "Noto Sans Lao", sans-serif';
+  p.variants.forEach(v=>{
+    const label = v.size + ':' + v.qty;
+    const tw = ctx.measureText(label).width + 32;
+    if(tx + tw > W - PAD){ tx = PAD; ty += 46; }
+    const low = v.qty <= p.minQty;
+    ctx.fillStyle = low ? '#F4D9D5' : '#DCEBC7';
+    roundRectPath(ctx, tx, ty, tw, 36, 18);
+    ctx.fill();
+    ctx.fillStyle = low ? '#B94A3D' : '#4C7A5E';
+    ctx.fillText(label, tx+16, ty+25);
+    tx += tw + 10;
+  });
+  ty += 60;
+
+  ctx.strokeStyle = '#E0DACD';
+  ctx.beginPath(); ctx.moveTo(PAD, ty); ctx.lineTo(W-PAD, ty); ctx.stroke();
+  ctx.fillStyle = '#8A8477';
+  ctx.font = '400 18px "Noto Sans Lao", sans-serif';
+  ctx.fillText('ສົນໃຈສັ່ງຊື້ ທັກແຊັດມາຫາພວກເຮົາ', PAD, ty+40);
+
+  return new Promise(resolve => canvas.toBlob(resolve, 'image/png', 0.95));
+}
+async function shareProductCard(id){
+  const p = products.find(x=>x.id===id);
+  if(!p) return;
+  try{
+    const blob = await generateProductShareImage(p);
+    if(!blob){ showToast('ເກີດຂໍ້ຜິດພາດ, ລອງໃໝ່ພາຍຫຼັງ'); return; }
+    const fileName = (p.code || p.name || 'product').replace(/[^a-zA-Z0-9ກ-໙_-]/g, '_') + '.png';
+    const file = new File([blob], fileName, { type: 'image/png' });
+    if(navigator.canShare && navigator.canShare({ files: [file] })){
+      await navigator.share({ files: [file], title: p.name, text: p.name });
+    } else {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = fileName;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url), 4000);
+      showToast('ອຸປະກອນນີ້ບໍ່ຮອງຮັບການແຊຣ໌ໂດຍກົງ, ບັນທຶກຮູບໄວ້ໃຫ້ແລ້ວ');
+    }
+  }catch(e){
+    if(e && e.name === 'AbortError') return;
+    console.error(e);
+    showToast('ເກີດຂໍ້ຜິດພາດ, ລອງໃໝ່ພາຍຫຼັງ');
+  }
+}
+
 function openEdit(id){
   const p = products.find(x=>x.id===id);
   if(!p) return;
@@ -3809,8 +3942,8 @@ document.addEventListener('click', e=>{
     renderAll();
     if(detailId === id) renderDetailSheet();
   } else if(action === 'messenger-placeholder'){
-    /* ວາງໄອຄອນໄວ້ກ່ອນ, ຍັງບໍ່ໄດ້ໃສ່ຄຳສັ່ງໃດໆ (ຈະເພີ່ມພາຍຫຼັງ) */
     e.stopPropagation();
+    shareProductCard(id);
   } else if(action === 'delete-scan'){
     const scanId = t.dataset.scanId;
     scanLog = scanLog.filter(r=>r.id!==scanId);
