@@ -577,6 +577,8 @@ let barcodeSearch = '';
 let reportCategoryFilter = '';
 let ordersFilterDate = new Date().toISOString().slice(0,10);
 let categoryDetailName = null;
+let poListSearch = '';
+let poListCategoryFilter = '';
 
 const SCANLOG_KEY = 'khang-sinkha-scanlog-v1';
 let scanLog = [];
@@ -1991,7 +1993,7 @@ function confirmPurchaseOrder(){
   closePurchaseOrderModal();
   showToast(`ບັນທຶກຄຳສັ່ງຊື້ສຳເລັດ: ${esc(base)} (${esc(s.size)}) x${n}`);
   if(tab === 'report') renderReport();
-  if(document.getElementById('po-list-overlay')) renderPurchaseOrderListModal();
+  if(document.getElementById('po-list-overlay')) renderPurchaseOrderRows();
 }
 
 function removePendingOrder(code, size){
@@ -2007,21 +2009,79 @@ function openPurchaseOrderListModal(){
   renderPurchaseOrderListModal();
 }
 function closePurchaseOrderListModal(){ document.getElementById('po-list-root').innerHTML = ''; }
+
+/* ຫາໝວດໝູ່ຂອງລາຍການຈັດຊື້ນຶ່ງ ໂດຍອີງໃສ່ສິນຄ້າທີ່ມັນອ້າງອີງເຖິງ (ຜ່ານ productId ກ່ອນ, ຖ້າບໍ່ພົບໃຫ້ລອງທຽບລະຫັດ) */
+function getPurchaseOrderCategory(o){
+  const p = products.find(pr => pr.id === o.productId) || products.find(pr => (pr.code||'').trim() === (o.code||'').trim());
+  if(!p) return null;
+  return (p.category && p.category.trim()) ? p.category.trim() : null;
+}
+
 function renderPurchaseOrderListModal(){
   const root = document.getElementById('po-list-root');
-  const sorted = [...purchaseOrders].sort((a,b)=> new Date(b.createdAt) - new Date(a.createdAt));
+  const categoryOptions = `
+    <option value="" ${poListCategoryFilter===''?'selected':''}>ທຸກໝວດໝູ່</option>
+    ${CATEGORIES.map(c => `<option value="${esc(c)}" ${poListCategoryFilter===c?'selected':''}>${esc(c)}</option>`).join('')}
+    <option value="__none__" ${poListCategoryFilter==='__none__'?'selected':''}>ບໍ່ໄດ້ກຳນົດ</option>
+  `;
+  root.innerHTML = `
+    <div class="overlay" id="po-list-overlay">
+      <div class="modal" id="po-list-modal">
+        <div class="modal-head">
+          <h2>ລາຍການຈັດຊື້</h2>
+          <button class="icon-x" id="po-list-close">${ICONS.x}</button>
+        </div>
+        <div class="search-row" style="margin-bottom:10px;">
+          <div class="search-wrap" style="margin-bottom:0;">${ICONS.search}<input id="po-list-search" type="text" placeholder="ຄົ້ນຫາຊື່, ລະຫັດ, ຂະໜາດ..." value="${esc(poListSearch)}"></div>
+          <select id="po-list-category-filter" style="flex-shrink:0; width:118px; height:40px; background:#fff; border:1px solid var(--dark-10); border-radius:12px; padding:0 6px; font-size:12px; font-family:inherit;">${categoryOptions}</select>
+        </div>
+        <div id="po-list-rows"></div>
+      </div>
+    </div>
+  `;
+  document.getElementById('po-list-overlay').addEventListener('click', e=>{ if(e.target.id==='po-list-overlay') closePurchaseOrderListModal(); });
+  document.getElementById('po-list-close').addEventListener('click', closePurchaseOrderListModal);
+  document.getElementById('po-list-search').addEventListener('input', e=>{ poListSearch = e.target.value; renderPurchaseOrderRows(); });
+  document.getElementById('po-list-category-filter').addEventListener('change', e=>{ poListCategoryFilter = e.target.value; renderPurchaseOrderRows(); });
+  renderPurchaseOrderRows();
+}
+
+function renderPurchaseOrderRows(){
+  const rowsRoot = document.getElementById('po-list-rows');
+  if(!rowsRoot) return;
+  const q = poListSearch.trim().toLowerCase();
+
+  let filtered = [...purchaseOrders];
+  if(poListCategoryFilter){
+    filtered = filtered.filter(o => {
+      const cat = getPurchaseOrderCategory(o);
+      return poListCategoryFilter === '__none__' ? !cat : cat === poListCategoryFilter;
+    });
+  }
+  if(q){
+    filtered = filtered.filter(o =>
+      (o.productName||'').toLowerCase().includes(q) ||
+      (o.color||'').toLowerCase().includes(q) ||
+      (o.code||'').toLowerCase().includes(q) ||
+      (o.size||'').toLowerCase().includes(q)
+    );
+  }
+  const sorted = filtered.sort((a,b)=> new Date(b.createdAt) - new Date(a.createdAt));
   const totalItems = sorted.reduce((s,o)=>s+o.qty,0);
+  const isFiltering = !!(q || poListCategoryFilter);
 
   let rowsHtml;
-  if(sorted.length === 0){
+  if(purchaseOrders.length === 0){
     rowsHtml = `<div class="empty">${ICONS.receiptCheck}<p>ຍັງບໍ່ມີລາຍການຈັດຊື້</p></div>`;
+  } else if(sorted.length === 0){
+    rowsHtml = `<div class="empty">${ICONS.search}<p>ບໍ່ພົບລາຍການທີ່ຄົ້ນຫາ</p></div>`;
   } else {
     rowsHtml = sorted.map(o => `
       <div class="report-card" style="margin-bottom:10px; background:rgba(154,201,59,.15);">
         <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
           <div style="min-width:0;">
-            <p style="font-weight:700; font-size:15px; margin:0; color:var(--dark);">${esc(o.productName)}${o.color && o.color !== '-' ? ' <span style="font-weight:700; font-size:15px; color:var(--dark);">('+esc(o.color)+')</span>' : ''}</p>
-            <p class="muted" style="margin:2px 0 0;">${o.code?('#'+esc(o.code)+' &middot; '):''}ຂະໜາດ ${esc(o.size)}</p>
+            <p style="margin:0;"><span style="display:inline-block; background:#2F6FED; color:#fff; font-weight:700; font-size:15px; padding:3px 9px; border-radius:8px;">${esc(o.productName)}${o.color && o.color !== '-' ? ' ('+esc(o.color)+')' : ''}</span></p>
+            <p class="muted" style="margin:6px 0 0;">${o.code?('#'+esc(o.code)+' &middot; '):''}ຂະໜາດ ${esc(o.size)}</p>
             <p class="muted" style="margin:2px 0 0;">${esc(new Date(o.createdAt).toLocaleString('lo-LA'))}</p>
           </div>
           <div style="display:flex; flex-direction:column; align-items:flex-end; gap:8px; flex-shrink:0;">
@@ -2037,20 +2097,10 @@ function renderPurchaseOrderListModal(){
     `).join('');
   }
 
-  root.innerHTML = `
-    <div class="overlay" id="po-list-overlay">
-      <div class="modal" id="po-list-modal">
-        <div class="modal-head">
-          <h2>ລາຍການຈັດຊື້</h2>
-          <button class="icon-x" id="po-list-close">${ICONS.x}</button>
-        </div>
-        <p class="muted" style="margin:-8px 0 14px; font-size:12px;">ລາຍການທັງໝົດ ${sorted.length} ລາຍການ, ລວມ ${totalItems} ໂຕ — ສ້າງຈາກ "ສ້າງລາຍການຈັດຊື້"</p>
-        ${rowsHtml}
-      </div>
-    </div>
+  rowsRoot.innerHTML = `
+    <p class="muted" style="margin:-4px 0 12px; font-size:12px;">${isFiltering ? `ພົບ ${sorted.length} ລາຍການ, ລວມ ${totalItems} ໂຕ` : `ລາຍການທັງໝົດ ${sorted.length} ລາຍການ, ລວມ ${totalItems} ໂຕ`} — ສ້າງຈາກ "ສ້າງລາຍການຈັດຊື້"</p>
+    ${rowsHtml}
   `;
-  document.getElementById('po-list-overlay').addEventListener('click', e=>{ if(e.target.id==='po-list-overlay') closePurchaseOrderListModal(); });
-  document.getElementById('po-list-close').addEventListener('click', closePurchaseOrderListModal);
   document.querySelectorAll('[data-po-receive-id]').forEach(btn=>{
     btn.addEventListener('click', ()=>{ confirmReceiveIntoWarehouse(btn.dataset.poReceiveId); });
   });
@@ -2071,7 +2121,7 @@ function confirmCancelOrder(id){
   savePurchaseOrders();
   closeOrderActionModal();
   if(tab === 'report') renderReport();
-  if(document.getElementById('po-list-overlay')) renderPurchaseOrderListModal();
+  if(document.getElementById('po-list-overlay')) renderPurchaseOrderRows();
   showToast('ຍົກເລີກການຈັດຊື້ສຳເລັດ');
 }
 
@@ -2095,7 +2145,7 @@ function confirmReceiveIntoWarehouse(id){
   closeOrderActionModal();
   renderAll();
   if(detailId === p.id) renderDetailSheet();
-  if(document.getElementById('po-list-overlay')) renderPurchaseOrderListModal();
+  if(document.getElementById('po-list-overlay')) renderPurchaseOrderRows();
   showToast('ເພີ່ມສິນຄ້າເຂົ້າສາງຮຽບຮ້ອຍແລ້ວ');
 }
 
@@ -2172,7 +2222,7 @@ function confirmPartialReceive(){
   closePartialReceiveModal();
   renderAll();
   if(detailId === p.id) renderDetailSheet();
-  if(document.getElementById('po-list-overlay')) renderPurchaseOrderListModal();
+  if(document.getElementById('po-list-overlay')) renderPurchaseOrderRows();
   showToast(remaining <= 0
     ? `ຮັບເຂົ້າສາງ x${n} ຄົບຖ້ວນຕາມທີ່ສັ່ງແລ້ວ`
     : `ຮັບເຂົ້າສາງ x${n} ແລ້ວ, ຍັງເຫຼືອສັ່ງຊື້ x${remaining}`);
