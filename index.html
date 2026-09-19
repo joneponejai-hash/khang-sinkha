@@ -73,8 +73,8 @@
   .grid-img img{width:100%; height:100%; object-fit:cover;}
   .grid-img svg{width:24px; height:24px; color:var(--dark-15);}
   .grid-low-badge{position:absolute; top:6px; right:6px; width:20px; height:20px; border-radius:50%; background:var(--danger); display:flex; align-items:center; justify-content:center;}
-  .grid-dup-btn{position:absolute; left:8px; bottom:8px; top:auto; transform:none; opacity:.85; background:#9AC93B; color:#1B4D2E; border:none; border-radius:999px; padding:6px 10px; font-size:11px; font-weight:700; cursor:pointer; font-family:inherit; box-shadow:0 2px 8px rgba(0,0,0,.25); display:flex; align-items:center; gap:4px; z-index:2;}
-  .grid-dup-btn svg{width:12px; height:12px;}
+  .grid-dup-btn{position:absolute; left:8px; top:8px; bottom:auto; right:auto; transform:none; opacity:1; background:none; color:#9AC93B; border:none; padding:4px; cursor:pointer; font-family:inherit; display:flex; align-items:center; justify-content:center; z-index:2; filter:drop-shadow(0 1px 3px rgba(0,0,0,.4));}
+  .grid-dup-btn svg{width:22px; height:22px;}
   .buy-btn, .sell-btn{background:var(--success); color:#fff; border:none; border-radius:999px; padding:8px 13px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; box-shadow:0 3px 10px rgba(0,0,0,.28); display:flex; align-items:center; gap:5px; white-space:nowrap;}
   .buy-btn{background:var(--accent); color:var(--dark);}
   .buy-btn svg, .sell-btn svg{width:14px; height:14px;}
@@ -86,9 +86,21 @@
   .sell-qty-input:focus{border-color:var(--success); box-shadow:0 0 0 3px rgba(76,122,94,.2);}
   .grid-low-badge svg{width:11px; height:11px; color:#fff;}
   .grid-body{padding:10px 10px 40px; cursor:pointer;}
-  .grid-messenger-btn{float:left; width:28px; height:28px; margin:-16px 8px 4px 0; border:none; padding:0; cursor:pointer; background:transparent; position:relative; z-index:2; filter:drop-shadow(0 2px 4px rgba(0,0,0,.35));}
+  .grid-messenger-btn{float:left; width:28px; height:28px; margin:-16px 8px 4px 0; border:none; padding:0; cursor:pointer; background:transparent; position:relative; z-index:2; filter:drop-shadow(0 2px 4px rgba(0,0,0,.35)); animation:messenger-idle-bounce 2.6s ease-in-out infinite; will-change:transform; transition:transform .12s ease;}
   .grid-messenger-btn img{width:100%; height:100%; object-fit:contain; display:block; pointer-events:none;}
-  .grid-messenger-btn:active{filter:drop-shadow(0 2px 4px rgba(0,0,0,.35)) brightness(1.1);}
+  .grid-messenger-btn:active{transform:scale(.8); animation-play-state:paused;}
+  .grid-messenger-btn.tapped{animation:messenger-tap-pop .5s cubic-bezier(.34,1.56,.64,1);}
+  @keyframes messenger-idle-bounce{
+    0%, 100%{ transform:scale(1) rotate(0deg); }
+    50%{ transform:scale(1.1) rotate(-6deg); }
+  }
+  @keyframes messenger-tap-pop{
+    0%{ transform:scale(1) rotate(0deg); }
+    25%{ transform:scale(1.4) rotate(10deg); }
+    50%{ transform:scale(.8) rotate(-8deg); }
+    75%{ transform:scale(1.15) rotate(4deg); }
+    100%{ transform:scale(1) rotate(0deg); }
+  }
   .grid-title{font-size:13px; font-weight:600; color:var(--dark); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .grid-sub{font-size:10px; color:var(--dark-40); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .grid-tags{display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; min-height:18px;}
@@ -247,6 +259,16 @@
   .daily-total-text .caption{display:block; font-size:12px; font-weight:700; color:#fff; -webkit-text-stroke:0; margin-bottom:6px; letter-spacing:.5px;}
   @keyframes daily-total-rotate{ from{ transform:rotate(0deg); } to{ transform:rotate(360deg); } }
   @keyframes daily-total-pulse{ 0%,100%{ opacity:.25; transform:scale(.7); } 50%{ opacity:1; transform:scale(1.15); } }
+  .share-preview-overlay{position:fixed; inset:0; background:rgba(0,0,0,.65); display:flex; align-items:center; justify-content:center; z-index:60; padding:24px;}
+  .share-preview-box{position:relative; background:#fff; border-radius:20px; padding:14px; max-width:420px; width:100%; max-height:88vh; display:flex; flex-direction:column; gap:12px; box-shadow:0 12px 40px rgba(0,0,0,.4);}
+  .share-preview-loading{padding:60px 20px; text-align:center; font-size:14px; font-weight:600; color:var(--dark-60);}
+  .share-preview-img{width:100%; border-radius:14px; display:block; max-height:60vh; object-fit:contain; background:#F6F4EF; flex:1; min-height:0;}
+  .share-preview-close{position:absolute; top:-14px; right:-14px; width:34px; height:34px; border-radius:50%; background:var(--dark); color:#fff; border:none; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 4px 12px rgba(0,0,0,.35); z-index:2;}
+  .share-preview-close svg{width:16px; height:16px;}
+  .share-preview-actions{display:flex;}
+  .share-preview-btn{flex:1; display:flex; align-items:center; justify-content:center; gap:8px; background:#2F6FED; color:#fff; border:none; border-radius:12px; padding:13px; font-size:15px; font-weight:700; cursor:pointer; font-family:inherit; box-shadow:0 4px 14px rgba(47,111,237,.4);}
+  .share-preview-btn svg{width:18px; height:18px;}
+  .share-preview-btn:active{filter:brightness(1.1);}
   .overlay{position:fixed; inset:0; background:rgba(0,0,0,.45); display:flex; align-items:flex-end; justify-content:center; z-index:30;}
   .overlay.center{align-items:center; padding:0 24px;}
   .modal{width:100%; max-width:480px; background:var(--bg); border-radius:24px 24px 0 0; padding:20px; padding-bottom:32px; max-height:90vh; overflow-y:auto;}
@@ -469,6 +491,7 @@
 </div>
 <button type="button" class="daily-total-btn" id="daily-total-btn" title="ຍອດຂາຍລວມມື້ນີ້"></button>
 <div id="daily-total-root"></div>
+<div id="share-preview-root"></div>
 
 <div id="modal-root"></div>
 <div id="detail-root"></div>
@@ -1568,7 +1591,7 @@ function gridCardHtml(p){
       <div class="grid-img" data-action="open-detail" data-id="${p.id}">
         ${imgHtml}
         ${low ? `<span class="grid-low-badge">${ICONS.alert}</span>` : ''}
-        <button type="button" class="grid-dup-btn" data-action="duplicate-product" data-id="${p.id}">${ICONS.copy} ສ້າງຊ້ຳ</button>
+        <button type="button" class="grid-dup-btn" data-action="duplicate-product" data-id="${p.id}" title="ສ້າງຊ້ຳ">${ICONS.copy}</button>
       </div>
       <div class="grid-body" data-action="open-detail" data-id="${p.id}">
         <button type="button" class="grid-messenger-btn" data-action="messenger-placeholder" data-id="${p.id}" title="ແຊຣ໌ຂໍ້ມູນສິນຄ້າ"><img src="${MESSENGER_ICON}" alt="Messenger"></button>
@@ -3008,15 +3031,55 @@ function roundRectPath(ctx, x, y, w, h, r){
   ctx.arcTo(x, y, x+w, y, r);
   ctx.closePath();
 }
+
+/* CODE128 (Set B) barcode: patterns table verified against reportlab's code128 module
+   (values 0-102 = characters, 103/104/105 = START A/B/C, 106 = STOP) */
+const CODE128_PATTERNS = ["212222","222122","222221","121223","121322","131222","122213","122312","132212","221213","221312","231212","112232","122132","122231","113222","123122","123221","223211","221132","221231","213212","223112","312131","311222","321122","321221","312212","322112","322211","212123","212321","232121","111323","131123","131321","112313","132113","132311","211313","231113","231311","112133","112331","132131","113123","113321","133121","313121","211331","231131","213113","213311","213131","311123","311321","331121","312113","312311","332111","314111","221411","431111","111224","111422","121124","121421","141122","141221","112214","112412","122114","122411","142112","142211","241211","221114","413111","241112","134111","111242","121142","121241","114212","124112","124211","411212","421112","421211","212141","214121","412121","111143","111341","131141","114113","114311","411113","411311","113141","114131","311141","411131","211412","211214","211232","2331112"];
+const CODE128_START_B = 104, CODE128_STOP = 106;
+function encodeCode128B(text){
+  const values = [];
+  for(let i=0;i<text.length;i++){
+    const code = text.charCodeAt(i) - 32;
+    if(code < 0 || code > 94) return null; /* character outside printable-ASCII Set B range */
+    values.push(code);
+  }
+  let checksum = CODE128_START_B;
+  for(let i=0;i<values.length;i++) checksum += values[i] * (i+1);
+  checksum = checksum % 103;
+  return [CODE128_START_B, ...values, checksum, CODE128_STOP];
+}
+/* draws the barcode bars centered in [x, x+maxWidth) at y, returns the actual rendered width (or 0 if it couldn't be encoded) */
+function drawCode128(ctx, text, x, y, height, maxWidth){
+  const symbolValues = encodeCode128B(text);
+  if(!symbolValues) return 0;
+  let totalModules = 0;
+  symbolValues.forEach(v => { for(const ch of CODE128_PATTERNS[v]) totalModules += Number(ch); });
+  const moduleWidth = Math.max(1, Math.min(4, Math.floor(maxWidth / totalModules)));
+  const totalWidth = totalModules * moduleWidth;
+  let cursor = x + (maxWidth - totalWidth) / 2;
+  ctx.fillStyle = '#000';
+  symbolValues.forEach(val => {
+    const pattern = CODE128_PATTERNS[val];
+    for(let i=0;i<pattern.length;i++){
+      const w = Number(pattern[i]) * moduleWidth;
+      if(i % 2 === 0){ ctx.fillRect(cursor, y, w, height); }
+      cursor += w;
+    }
+  });
+  return totalWidth;
+}
+
 async function generateProductShareImage(p){
   const W = 900, PAD = 40;
   const imgSize = W - PAD*2;
   const HEADER_H = 130;
-  const GAP1 = 30, TITLE_H = 48, SUB_H = 40;
-  const tagRows = Math.max(1, Math.ceil(p.variants.length / 4));
-  const TAGS_H = tagRows * 46;
+  const GAP1 = 30, TITLE_H = 50;
+  const hasBarcode = !!(p.code && p.code.trim());
+  const BARCODE_H = hasBarcode ? 150 : 0;
+  const tagRows = Math.max(1, Math.ceil(p.variants.length / 3));
+  const TAGS_H = tagRows * 60 + 20;
   const FOOTER_H = 80;
-  const H = HEADER_H + imgSize + GAP1 + TITLE_H + SUB_H + TAGS_H + FOOTER_H + PAD;
+  const H = HEADER_H + imgSize + GAP1 + TITLE_H + BARCODE_H + TAGS_H + FOOTER_H + PAD;
 
   const canvas = document.createElement('canvas');
   canvas.width = W; canvas.height = H;
@@ -3025,6 +3088,7 @@ async function generateProductShareImage(p){
   ctx.fillStyle = '#F6F4EF';
   ctx.fillRect(0, 0, W, H);
 
+  /* ໂລໂກ້ຮ້ານ - ປະທັບໄວ້ນຳທຸກຄັ້ງ ເພື່ອຢືນຢັນຄວາມເປັນເຈົ້າຂອງສິນຄ້າ */
   ctx.fillStyle = '#12213A';
   ctx.fillRect(0, 0, W, HEADER_H);
   try{
@@ -3038,7 +3102,7 @@ async function generateProductShareImage(p){
   ctx.fillStyle = '#fff';
   ctx.font = '700 30px "Noto Sans Lao", sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText('M² MEN SHOP', 130, 62);
+  ctx.fillText('MEN SHOP', 130, 62);
   ctx.font = '400 16px "Noto Sans Lao", sans-serif';
   ctx.fillStyle = 'rgba(255,255,255,.75)';
   ctx.fillText('Est. 2016 · Official Store', 130, 90);
@@ -3059,54 +3123,111 @@ async function generateProductShareImage(p){
   }
   ctx.restore();
 
+  /* ຊື່ສິນຄ້າ - ໂຕເຂັ້ມສີດຳ ຂະໜາດໃຫຍ່ */
   y += imgSize + TITLE_H;
-  ctx.fillStyle = '#1C2B33';
-  ctx.font = '700 38px "Noto Sans Lao", sans-serif';
-  ctx.fillText(p.name, PAD, y);
+  ctx.fillStyle = '#000';
+  ctx.font = '800 42px "Noto Sans Lao", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(p.name, W/2, y);
+  ctx.textAlign = 'left';
 
-  y += SUB_H;
-  ctx.font = '600 26px "Noto Sans Lao", sans-serif';
-  ctx.fillStyle = '#2F6FED';
-  const subParts = [];
-  if(p.code) subParts.push('#'+p.code);
-  if(p.price>0) subParts.push(Number(p.price).toLocaleString()+' ກີບ');
-  ctx.fillText(subParts.join('   ·   '), PAD, y);
+  /* Barcode ທີ່ສະແກນໄດ້ຈິງ (CODE128) + ເລກລະຫັດສິນຄ້າ */
+  if(hasBarcode){
+    y += 40;
+    const barH = 80;
+    drawCode128(ctx, p.code.trim(), PAD, y, barH, imgSize);
+    y += barH + 34;
+    ctx.fillStyle = '#1C2B33';
+    ctx.font = '700 26px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(p.code.trim(), W/2, y);
+    ctx.textAlign = 'left';
+    y += 30;
+  } else {
+    y += 20;
+  }
 
-  y += 30;
+  /* ຂະໜາດ + ຈຳນວນຄົງຄັງ - ໂຕໜັງສືສີດຳເຂັ້ມ ໂຕໜາ ພື້ນຫຼັງສີຂຽວ #9AC93B */
   let tx = PAD, ty = y;
-  ctx.font = '700 22px "Noto Sans Lao", sans-serif';
+  const tagH = 52;
+  ctx.font = '800 30px "Noto Sans Lao", sans-serif';
   p.variants.forEach(v=>{
-    const label = v.size + ':' + v.qty;
-    const tw = ctx.measureText(label).width + 32;
-    if(tx + tw > W - PAD){ tx = PAD; ty += 46; }
-    const low = v.qty <= p.minQty;
-    ctx.fillStyle = low ? '#F4D9D5' : '#DCEBC7';
-    roundRectPath(ctx, tx, ty, tw, 36, 18);
+    const label = v.size + ' = ' + v.qty;
+    const tw = ctx.measureText(label).width + 40;
+    if(tx + tw > W - PAD){ tx = PAD; ty += tagH + 12; }
+    ctx.fillStyle = '#9AC93B';
+    roundRectPath(ctx, tx, ty, tw, tagH, 14);
     ctx.fill();
-    ctx.fillStyle = low ? '#B94A3D' : '#4C7A5E';
-    ctx.fillText(label, tx+16, ty+25);
-    tx += tw + 10;
+    ctx.fillStyle = '#12213A';
+    ctx.fillText(label, tx+20, ty+37);
+    tx += tw + 14;
   });
-  ty += 60;
+  ty += tagH + 30;
 
   ctx.strokeStyle = '#E0DACD';
   ctx.beginPath(); ctx.moveTo(PAD, ty); ctx.lineTo(W-PAD, ty); ctx.stroke();
   ctx.fillStyle = '#8A8477';
   ctx.font = '400 18px "Noto Sans Lao", sans-serif';
-  ctx.fillText('ສົນໃຈສັ່ງຊື້ ທັກແຊັດມາຫາພວກເຮົາ', PAD, ty+40);
+  ctx.textAlign = 'center';
+  ctx.fillText('ສົນໃຈສັ່ງຊື້ ທັກແຊັດມາຫາພວກເຮົາ', W/2, ty+40);
+  ctx.textAlign = 'left';
 
   return new Promise(resolve => canvas.toBlob(resolve, 'image/png', 0.95));
 }
-async function shareProductCard(id){
+
+let shareImageState = null;
+async function openShareImagePreview(id){
   const p = products.find(x=>x.id===id);
   if(!p) return;
+  const root = document.getElementById('share-preview-root');
+  if(!root) return;
+  root.innerHTML = `
+    <div class="share-preview-overlay" id="share-preview-overlay">
+      <div class="share-preview-box">
+        <div class="share-preview-loading">ກຳລັງສ້າງຮູບ...</div>
+      </div>
+    </div>
+  `;
+  document.getElementById('share-preview-overlay').addEventListener('click', e=>{
+    if(e.target.id === 'share-preview-overlay') closeShareImagePreview();
+  });
   try{
     const blob = await generateProductShareImage(p);
-    if(!blob){ showToast('ເກີດຂໍ້ຜິດພາດ, ລອງໃໝ່ພາຍຫຼັງ'); return; }
-    const fileName = (p.code || p.name || 'product').replace(/[^a-zA-Z0-9ກ-໙_-]/g, '_') + '.png';
-    const file = new File([blob], fileName, { type: 'image/png' });
+    if(!blob){ closeShareImagePreview(); showToast('ເກີດຂໍ້ຜິດພາດ, ລອງໃໝ່ພາຍຫຼັງ'); return; }
+    const url = URL.createObjectURL(blob);
+    shareImageState = { id, blob, url };
+    const box = document.querySelector('#share-preview-root .share-preview-box');
+    if(!box) return;
+    box.innerHTML = `
+      <button type="button" class="share-preview-close" id="share-preview-close">${ICONS.x}</button>
+      <img src="${url}" class="share-preview-img" alt="">
+      <div class="share-preview-actions">
+        <button type="button" class="share-preview-btn" id="share-preview-share-btn">${ICONS.upload} ແຊຣ໌ອອກໄປ</button>
+      </div>
+    `;
+    document.getElementById('share-preview-close').addEventListener('click', closeShareImagePreview);
+    document.getElementById('share-preview-share-btn').addEventListener('click', doShareImage);
+  }catch(e){
+    console.error(e);
+    closeShareImagePreview();
+    showToast('ເກີດຂໍ້ຜິດພາດ, ລອງໃໝ່ພາຍຫຼັງ');
+  }
+}
+function closeShareImagePreview(){
+  const root = document.getElementById('share-preview-root');
+  if(root) root.innerHTML = '';
+  if(shareImageState && shareImageState.url) URL.revokeObjectURL(shareImageState.url);
+  shareImageState = null;
+}
+async function doShareImage(){
+  if(!shareImageState) return;
+  const { blob, id } = shareImageState;
+  const p = products.find(x=>x.id===id);
+  const fileName = ((p && p.code) || (p && p.name) || 'product').replace(/[^a-zA-Z0-9ກ-໙_-]/g, '_') + '.png';
+  const file = new File([blob], fileName, { type: 'image/png' });
+  try{
     if(navigator.canShare && navigator.canShare({ files: [file] })){
-      await navigator.share({ files: [file], title: p.name, text: p.name });
+      await navigator.share({ files: [file], title: p ? p.name : '', text: p ? p.name : '' });
     } else {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -3943,7 +4064,9 @@ document.addEventListener('click', e=>{
     if(detailId === id) renderDetailSheet();
   } else if(action === 'messenger-placeholder'){
     e.stopPropagation();
-    shareProductCard(id);
+    t.classList.add('tapped');
+    t.addEventListener('animationend', ()=> t.classList.remove('tapped'), { once:true });
+    openShareImagePreview(id);
   } else if(action === 'delete-scan'){
     const scanId = t.dataset.scanId;
     scanLog = scanLog.filter(r=>r.id!==scanId);
