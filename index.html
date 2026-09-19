@@ -257,6 +257,10 @@
   .confirm-box .title{font-weight:600; margin-bottom:4px;}
   .confirm-box .desc{font-size:12px; color:var(--dark-50); margin-bottom:16px;}
   .confirm-actions{display:flex; gap:8px;}
+  .clear-input-wrap{position:relative;}
+  .clear-input-wrap input{padding-right:30px !important; box-sizing:border-box;}
+  .clear-input-btn{display:none; position:absolute; right:6px; top:50%; transform:translateY(-50%); width:20px; height:20px; border-radius:50%; background:var(--danger,#F40008); color:#fff; border:none; align-items:center; justify-content:center; font-size:11px; line-height:1; cursor:pointer; padding:0; z-index:2;}
+  .clear-input-btn:active{opacity:.8;}
   .branch-suggest-list{display:none; position:absolute; top:100%; left:0; right:0; background:#fff; border:1px solid var(--dark-15,#ddd); border-radius:10px; margin-top:4px; max-height:220px; overflow-y:auto; -webkit-overflow-scrolling:touch; box-shadow:0 8px 24px rgba(0,0,0,.12); z-index:50;}
   .branch-suggest-item{padding:8px 12px; cursor:pointer; display:flex; flex-direction:column; gap:1px; border-bottom:1px solid var(--dark-5,#f0f0f0);}
   .branch-suggest-item:last-child{border-bottom:none;}
@@ -634,7 +638,7 @@ function renderContent(){
   if(tab === 'list'){
     content.innerHTML = `
       <div class="search-row">
-        <div class="search-wrap">${ICONS.search}<input id="search-input" placeholder="ຄົ້ນຫາຊື່ ຫຼື ລະຫັດສິນຄ້າ..." value="${esc(search)}"><button type="button" class="search-scan-btn" id="search-scan-btn" title="ສະແກນ Barcode ເພື່ອຄົ້ນຫາ">${ICONS.barcode}</button></div>
+        <div class="search-wrap">${ICONS.search}<input id="search-input" data-no-clear="1" style="padding-right:74px;" placeholder="ຄົ້ນຫາຊື່ ຫຼື ລະຫັດສິນຄ້າ..." value="${esc(search)}"><button type="button" class="clear-input-btn" id="search-clear-btn" style="right:40px; display:${search?'flex':'none'};">✕</button><button type="button" class="search-scan-btn" id="search-scan-btn" title="ສະແກນ Barcode ເພື່ອຄົ້ນຫາ">${ICONS.barcode}</button></div>
         <div class="view-toggle">
           <button class="view-btn ${viewMode==='list'?'active':''}" id="view-list-btn">${ICONS.list}</button>
           <button class="view-btn ${viewMode==='grid'?'active':''}" id="view-grid-btn">${ICONS.grid}</button>
@@ -644,7 +648,17 @@ function renderContent(){
     `;
     document.getElementById('search-input').addEventListener('input', e=>{
       search = e.target.value;
+      document.getElementById('search-clear-btn').style.display = search ? 'flex' : 'none';
       renderListItems();
+    });
+    document.getElementById('search-clear-btn').addEventListener('mousedown', e=>e.preventDefault());
+    document.getElementById('search-clear-btn').addEventListener('click', ()=>{
+      search = '';
+      const si = document.getElementById('search-input');
+      si.value = '';
+      document.getElementById('search-clear-btn').style.display = 'none';
+      renderListItems();
+      si.focus();
     });
     document.getElementById('search-scan-btn').addEventListener('click', ()=>openScanner('search'));
     document.getElementById('view-list-btn').addEventListener('click', ()=>setViewMode('list'));
@@ -3788,6 +3802,70 @@ async function autoPullOnLoad(){
 if(localStorage.getItem(GDRIVE_CONNECTED_KEY) && location.protocol !== 'file:'){
   autoPullOnLoad();
 }
+
+/* ---------- UNIVERSAL CLEAR (×) BUTTON FOR TEXT/NUMBER INPUT FIELDS ---------- */
+/* ອັດຕະໂນມັດເພີ່ມປຸ່ມ × (ວົງມົນສີແດງ) ໃສ່ຊ່ອງພິມທີ່ແກ້ໄຂໄດ້ທົ່ວແອັບ ເພື່ອລຶບຂໍ້ມູນທັງໝົດໃນຊ່ອງນັ້ນທັນທີ */
+/* ຍົກເວັ້ນ: ຊ່ອງຈຳນວນແບບ stepper (ຄັບແຄບ, ພິມສັ້ນ), ຊ່ອງວັນທີ, ຊ່ອງໄຟລ໌, ແລະ ຊ່ອງທີ່ຈັດການເອງແລ້ວ (search-input) */
+const CLEARABLE_INPUT_TYPES = ['text', 'tel', 'number', 'email', 'search', ''];
+const NO_CLEAR_IDS = ['quick-scan-qty', 'po-qty', 'orders-date-input'];
+function shouldSkipClearableInput(inp){
+  if(inp.dataset.noClear) return true;
+  if(NO_CLEAR_IDS.indexOf(inp.id) !== -1) return true;
+  if(inp.className && inp.className.indexOf('qty-input') !== -1) return true;
+  if(inp.closest('.vrow')) return true;
+  const type = (inp.getAttribute('type') || 'text').toLowerCase();
+  return CLEARABLE_INPUT_TYPES.indexOf(type) === -1;
+}
+function initClearableInputs(root){
+  const scope = root || document;
+  if(!scope.querySelectorAll) return;
+  scope.querySelectorAll('input').forEach(inp=>{
+    if(inp.dataset.clearInit) return;
+    inp.dataset.clearInit = '1';
+    if(shouldSkipClearableInput(inp)) return;
+    const parent = inp.parentNode;
+    if(!parent) return;
+    const wrap = document.createElement('span');
+    wrap.className = 'clear-input-wrap';
+    const parentDisplay = getComputedStyle(parent).display;
+    if(parentDisplay.indexOf('flex') !== -1){
+      const inpFlex = getComputedStyle(inp).flex;
+      wrap.style.display = 'flex';
+      wrap.style.alignItems = 'center';
+      wrap.style.flex = (inpFlex && inpFlex !== '0 1 auto') ? inpFlex : '1 1 auto';
+      wrap.style.minWidth = '0';
+    } else {
+      wrap.style.display = 'block';
+    }
+    parent.insertBefore(wrap, inp);
+    wrap.appendChild(inp);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'clear-input-btn';
+    btn.textContent = '✕';
+    btn.setAttribute('aria-label', 'ລຶບຂໍ້ມູນ');
+    wrap.appendChild(btn);
+    const toggle = () => { btn.style.display = inp.value ? 'flex' : 'none'; };
+    toggle();
+    inp.addEventListener('input', toggle);
+    btn.addEventListener('mousedown', e=>{ e.preventDefault(); });
+    btn.addEventListener('click', ()=>{
+      inp.value = '';
+      inp.dispatchEvent(new Event('input', { bubbles:true }));
+      inp.dispatchEvent(new Event('change', { bubbles:true }));
+      inp.focus();
+      toggle();
+    });
+  });
+}
+let clearableInputsScanQueued = false;
+function queueClearableInputsScan(){
+  if(clearableInputsScanQueued) return;
+  clearableInputsScanQueued = true;
+  requestAnimationFrame(()=>{ clearableInputsScanQueued = false; initClearableInputs(document); });
+}
+initClearableInputs(document);
+new MutationObserver(queueClearableInputsScan).observe(document.body, { childList:true, subtree:true });
 </script>
 </body>
 </html>
