@@ -900,7 +900,9 @@ function collapseCartReveal(){
   if(revealedCartId === null) return;
   revealedCartId = null;
   const listEl = document.getElementById('list-items');
-  if(listEl) renderListItems();
+  if(!listEl) return;
+  if(tab === 'categories' && categoryDetailName){ renderCategoryListItems(categoryDetailName); }
+  else { renderListItems(); }
 }
 function renderCartModal(){
   const root = document.getElementById('cart-root');
@@ -3613,7 +3615,8 @@ document.addEventListener('click', e=>{
     if(revealedCartId !== id){
       /* ຄັ້ງທຳອິດ: ພຽງແຕ່ກາງປຸ່ມກະຕ່າອອກມາ, ຍັງບໍ່ເປີດ popup */
       revealedCartId = id;
-      renderListItems();
+      if(tab === 'categories' && categoryDetailName){ renderCategoryListItems(categoryDetailName); }
+      else { renderListItems(); }
     } else {
       openCartModal(id);
     }
