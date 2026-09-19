@@ -3951,9 +3951,9 @@ renderAll();
 })();
 
 function getTodayTotalSales(){
-  const today = new Date().toISOString().slice(0,10);
+  const targetDate = ordersFilterDate || new Date().toISOString().slice(0,10);
   return customerOrders
-    .filter(o => (o.createdAt || '').slice(0,10) === today)
+    .filter(o => (o.createdAt || '').slice(0,10) === targetDate)
     .reduce((s,o) => s + getOrderTotal(o), 0);
 }
 
@@ -3961,6 +3961,11 @@ function openDailyTotalModal(){
   const root = document.getElementById('daily-total-root');
   if(!root) return;
   const total = getTodayTotalSales();
+  const targetDate = ordersFilterDate || new Date().toISOString().slice(0,10);
+  const isToday = targetDate === new Date().toISOString().slice(0,10);
+  const dateObj = new Date(targetDate + 'T00:00:00');
+  const dateLabel = dateObj.toLocaleDateString('lo-LA', { day:'2-digit', month:'2-digit', year:'numeric' });
+  const caption = isToday ? 'ຍອດຂາຍລວມມື້ນີ້' : `ຍອດຂາຍລວມວັນທີ ${dateLabel}`;
   const sparkCount = 12;
   const radius = 118;
   const sparks = Array.from({length:sparkCount}).map((_,i) => {
@@ -3974,7 +3979,7 @@ function openDailyTotalModal(){
       <div class="daily-total-burst">
         <div class="daily-total-ring">${sparks}</div>
         <div class="daily-total-text">
-          <span class="caption">ຍອດຂາຍລວມມື້ນີ້</span>
+          <span class="caption">${caption}</span>
           <span class="amount">${total.toLocaleString()}</span>
           <span class="unit">ກີບ</span>
         </div>
