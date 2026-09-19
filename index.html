@@ -632,7 +632,14 @@ let confirmDeleteId = null;
 let toastTimer = null;
 let barcodeSearch = '';
 let reportCategoryFilter = '';
-let ordersFilterDate = new Date().toISOString().slice(0,10);
+function localDateStr(d){
+  const dt = d ? new Date(d) : new Date();
+  const y = dt.getFullYear();
+  const m = String(dt.getMonth()+1).padStart(2,'0');
+  const day = String(dt.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+let ordersFilterDate = localDateStr();
 let categoryDetailName = null;
 let poListSearch = '';
 let poListCategoryFilter = '';
@@ -1255,7 +1262,7 @@ function renderOrdersTab(){
   const content = document.getElementById('content');
   const dateObj = new Date(ordersFilterDate + 'T00:00:00');
   const dateLabel = dateObj.toLocaleDateString('lo-LA', { day:'2-digit', month:'2-digit', year:'numeric' });
-  const filtered = customerOrders.filter(o => (o.createdAt || '').slice(0,10) === ordersFilterDate);
+  const filtered = customerOrders.filter(o => o.createdAt && localDateStr(o.createdAt) === ordersFilterDate);
   const billCount = filtered.length;
   const itemCount = filtered.reduce((s,o)=> s + getOrderRealQty(o), 0);
   const freeShipCount = filtered.filter(o => getOrderRealQty(o) > 1).length;
@@ -1325,7 +1332,7 @@ function renderOrdersTab(){
     ${listHtml}
   `;
   document.getElementById('orders-date-input').addEventListener('change', e=>{
-    ordersFilterDate = e.target.value || new Date().toISOString().slice(0,10);
+    ordersFilterDate = e.target.value || localDateStr();
     renderOrdersTab();
   });
   document.getElementById('orders-export-btn').addEventListener('click', ()=>printOrdersReport(filtered, dateLabel));
@@ -4189,7 +4196,7 @@ document.getElementById('tab-barcode-btn').addEventListener('click', ()=>{ tab='
 document.getElementById('bn-home').addEventListener('click', ()=>{ tab='list'; categoryDetailName=null; renderTabButtons(); renderBottomNav(); renderContent(); updateFabStyle(); });
 document.getElementById('bn-categories').addEventListener('click', ()=>{ tab='categories'; categoryDetailName=null; renderTabButtons(); renderBottomNav(); renderContent(); updateFabStyle(); });
 document.getElementById('bn-report').addEventListener('click', ()=>{ tab='report'; categoryDetailName=null; renderTabButtons(); renderBottomNav(); renderContent(); updateFabStyle(); });
-document.getElementById('bn-orders').addEventListener('click', ()=>{ tab='orders'; categoryDetailName=null; renderTabButtons(); renderBottomNav(); renderContent(); updateFabStyle(); });
+document.getElementById('bn-orders').addEventListener('click', ()=>{ tab='orders'; categoryDetailName=null; ordersFilterDate = localDateStr(); renderTabButtons(); renderBottomNav(); renderContent(); updateFabStyle(); });
 document.getElementById('fab-add').addEventListener('click', ()=>{
   if(fabBusy) return;
   if(tab === 'categories'){
@@ -4265,9 +4272,9 @@ renderAll();
 })();
 
 function getTodayTotalSales(){
-  const targetDate = ordersFilterDate || new Date().toISOString().slice(0,10);
+  const targetDate = ordersFilterDate || localDateStr();
   return customerOrders
-    .filter(o => (o.createdAt || '').slice(0,10) === targetDate)
+    .filter(o => o.createdAt && localDateStr(o.createdAt) === targetDate)
     .reduce((s,o) => s + getOrderTotal(o), 0);
 }
 
@@ -4275,8 +4282,8 @@ function openDailyTotalModal(){
   const root = document.getElementById('daily-total-root');
   if(!root) return;
   const total = getTodayTotalSales();
-  const targetDate = ordersFilterDate || new Date().toISOString().slice(0,10);
-  const isToday = targetDate === new Date().toISOString().slice(0,10);
+  const targetDate = ordersFilterDate || localDateStr();
+  const isToday = targetDate === localDateStr();
   const dateObj = new Date(targetDate + 'T00:00:00');
   const dateLabel = dateObj.toLocaleDateString('lo-LA', { day:'2-digit', month:'2-digit', year:'numeric' });
   const caption = isToday ? 'ຍອດຂາຍລວມມື້ນີ້' : `ຍອດຂາຍລວມວັນທີ ${dateLabel}`;
