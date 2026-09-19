@@ -1,4 +1,4 @@
-const CACHE_NAME = 'khang-sinkha-v12';
+const CACHE_NAME = 'khang-sinkha-v15';
 const APP_SHELL = [
   './',
   './index.html',
