@@ -73,7 +73,7 @@
   .grid-img img{width:100%; height:100%; object-fit:cover;}
   .grid-img svg{width:24px; height:24px; color:var(--dark-15);}
   .grid-low-badge{position:absolute; top:6px; right:6px; width:20px; height:20px; border-radius:50%; background:var(--danger); display:flex; align-items:center; justify-content:center;}
-  .grid-dup-btn{position:absolute; left:8px; top:44px; bottom:auto; right:auto; transform:none; width:32px; height:32px; border-radius:50%; background:rgba(154,201,59,.85); color:#fff; border:none; padding:0; cursor:pointer; font-family:inherit; display:flex; align-items:center; justify-content:center; z-index:2; box-shadow:0 2px 8px rgba(0,0,0,.25);}
+  .grid-dup-btn{position:absolute; left:8px; top:8px; bottom:auto; right:auto; transform:none; width:32px; height:32px; border-radius:50%; background:rgba(154,201,59,.85); color:#fff; border:none; padding:0; cursor:pointer; font-family:inherit; display:flex; align-items:center; justify-content:center; z-index:2; box-shadow:0 2px 8px rgba(0,0,0,.25);}
   .grid-dup-btn svg{width:18px; height:18px;}
   .buy-btn, .sell-btn{background:var(--success); color:#fff; border:none; border-radius:999px; padding:8px 13px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; box-shadow:0 3px 10px rgba(0,0,0,.28); display:flex; align-items:center; gap:5px; white-space:nowrap;}
   .buy-btn{background:var(--accent); color:var(--dark);}
@@ -86,7 +86,7 @@
   .sell-qty-input:focus{border-color:var(--success); box-shadow:0 0 0 3px rgba(76,122,94,.2);}
   .grid-low-badge svg{width:11px; height:11px; color:#fff;}
   .grid-body{padding:10px 10px 40px; cursor:pointer;}
-  .grid-messenger-btn{position:absolute; right:8px; bottom:8px; width:28px; height:28px; border:none; padding:0; cursor:pointer; background:transparent; z-index:2; filter:drop-shadow(0 2px 4px rgba(0,0,0,.35)); animation:messenger-idle-bounce 2.6s ease-in-out infinite; will-change:transform; transition:transform .12s ease;}
+  .grid-messenger-btn{position:absolute; right:8px; bottom:74px; width:28px; height:28px; border:none; padding:0; cursor:pointer; background:transparent; z-index:2; filter:drop-shadow(0 2px 4px rgba(0,0,0,.35)); animation:messenger-idle-bounce 2.6s ease-in-out infinite; will-change:transform; transition:transform .12s ease;}
   .grid-messenger-btn img{width:100%; height:100%; object-fit:contain; display:block; pointer-events:none;}
   .grid-messenger-btn:active{transform:scale(.8); animation-play-state:paused;}
   .grid-messenger-btn.tapped{animation:messenger-tap-pop .5s cubic-bezier(.34,1.56,.64,1);}
@@ -1607,7 +1607,6 @@ function gridCardHtml(p){
       <div class="grid-img" data-action="open-detail" data-id="${p.id}">
         ${imgHtml}
         ${low ? `<span class="grid-low-badge">${ICONS.alert}</span>` : ''}
-        <button type="button" class="grid-messenger-btn" data-action="messenger-placeholder" data-id="${p.id}" title="ແຊຣ໌ຂໍ້ມູນສິນຄ້າ"><img src="${MESSENGER_ICON}" alt="Messenger"></button>
         <button type="button" class="grid-dup-btn" data-action="duplicate-product" data-id="${p.id}" title="ສ້າງຊ້ຳ">${ICONS.copy}</button>
       </div>
       <div class="grid-body" data-action="open-detail" data-id="${p.id}">
@@ -1615,6 +1614,7 @@ function gridCardHtml(p){
         <div class="grid-sub">${p.code?('#'+esc(p.code)+' &middot; '):''}${p.price>0?(Number(p.price).toLocaleString()+' ກີບ'):''}</div>
         <div class="grid-tags">${tagsHtml}</div>
       </div>
+      <button type="button" class="grid-messenger-btn" data-action="messenger-placeholder" data-id="${p.id}" title="ແຊຣ໌ຂໍ້ມູນສິນຄ້າ"><img src="${MESSENGER_ICON}" alt="Messenger"></button>
       <span class="grid-qty-badge">${p.totalQty} <small>${esc(p.unit)}</small></span>
       ${p.code ? `<button type="button" class="grid-copy-btn" data-action="copy-code" data-id="${p.id}" title="ກ໋ອບປີ້ລະຫັດສິນຄ້າ">${ICONS.copy}</button>` : ''}
       <button type="button" class="grid-cart-btn${outOfStock?' disabled':''}" data-action="open-cart" data-id="${p.id}" ${outOfStock?'disabled':''} title="${outOfStock?'ສິນຄ້າໝົດ ບໍ່ສາມາດສັ່ງຊື້ໄດ້':'ສັ່ງຊື້ໃຫ້ລູກຄ້າ'}">${ICONS.cart}</button>
