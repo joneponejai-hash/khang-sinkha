@@ -73,8 +73,8 @@
   .grid-img img{width:100%; height:100%; object-fit:cover;}
   .grid-img svg{width:24px; height:24px; color:var(--dark-15);}
   .grid-low-badge{position:absolute; top:6px; right:6px; width:20px; height:20px; border-radius:50%; background:var(--danger); display:flex; align-items:center; justify-content:center;}
-  .grid-dup-btn{position:absolute; left:8px; top:8px; bottom:auto; right:auto; transform:none; opacity:1; background:none; color:#9AC93B; border:none; padding:4px; cursor:pointer; font-family:inherit; display:flex; align-items:center; justify-content:center; z-index:2; filter:drop-shadow(0 1px 3px rgba(0,0,0,.4));}
-  .grid-dup-btn svg{width:22px; height:22px;}
+  .grid-dup-btn{position:absolute; left:8px; top:8px; bottom:auto; right:auto; transform:none; width:32px; height:32px; border-radius:50%; background:rgba(154,201,59,.85); color:#fff; border:none; padding:0; cursor:pointer; font-family:inherit; display:flex; align-items:center; justify-content:center; z-index:2; box-shadow:0 2px 8px rgba(0,0,0,.25);}
+  .grid-dup-btn svg{width:18px; height:18px;}
   .buy-btn, .sell-btn{background:var(--success); color:#fff; border:none; border-radius:999px; padding:8px 13px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; box-shadow:0 3px 10px rgba(0,0,0,.28); display:flex; align-items:center; gap:5px; white-space:nowrap;}
   .buy-btn{background:var(--accent); color:var(--dark);}
   .buy-btn svg, .sell-btn svg{width:14px; height:14px;}
@@ -86,7 +86,7 @@
   .sell-qty-input:focus{border-color:var(--success); box-shadow:0 0 0 3px rgba(76,122,94,.2);}
   .grid-low-badge svg{width:11px; height:11px; color:#fff;}
   .grid-body{padding:10px 10px 40px; cursor:pointer;}
-  .grid-messenger-btn{float:left; width:28px; height:28px; margin:-16px 8px 4px 0; border:none; padding:0; cursor:pointer; background:transparent; position:relative; z-index:2; filter:drop-shadow(0 2px 4px rgba(0,0,0,.35)); animation:messenger-idle-bounce 2.6s ease-in-out infinite; will-change:transform; transition:transform .12s ease;}
+  .grid-messenger-btn{float:left; width:28px; height:28px; margin:-36px 8px 6px 0; border:none; padding:0; cursor:pointer; background:transparent; position:relative; z-index:2; filter:drop-shadow(0 2px 4px rgba(0,0,0,.35)); animation:messenger-idle-bounce 2.6s ease-in-out infinite; will-change:transform; transition:transform .12s ease;}
   .grid-messenger-btn img{width:100%; height:100%; object-fit:contain; display:block; pointer-events:none;}
   .grid-messenger-btn:active{transform:scale(.8); animation-play-state:paused;}
   .grid-messenger-btn.tapped{animation:messenger-tap-pop .5s cubic-bezier(.34,1.56,.64,1);}
