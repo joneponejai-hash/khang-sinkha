@@ -4242,14 +4242,20 @@ function showRealtimeSyncPulse(){
 async function pushToFirebase(){
   try{
     const ok = await initFirebaseIfEnabled();
-    if(!ok || !firestoreDb) return;
+    if(!ok || !firestoreDb) return { ok:false, reason:'not-configured' };
     const payload = {
       products, categories:CATEGORIES, customerOrders, purchaseOrders, scanLog,
       logo:logoImg, cover:coverImg,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
     await firebaseDocRef().set(payload, { merge:false });
-  } catch(e){ /* offline or misconfigured — next data change will retry */ }
+    return { ok:true };
+  } catch(e){
+    // offline or misconfigured (e.g. Firestore Database not created yet, or
+    // security rules deny writes) — surface WHY so enableFirebaseSync can show
+    // a real error instead of a false "success" message.
+    return { ok:false, reason: (e && e.code) || 'unknown', message: e && e.message };
+  }
 }
 
 async function pullFirebaseNow(){
@@ -4258,8 +4264,11 @@ async function pullFirebaseNow(){
   try{
     const snap = await firebaseDocRef().get();
     if(snap.exists){ applyRemoteFirebaseData(snap.data()); showToast('ດຶງຂໍ້ມູນຫຼ້າສຸດແລ້ວ'); }
-    else{ showToast('ຍັງບໍ່ມີຂໍ້ມູນຢູ່ Realtime Sync, ກົດ "sync ຂຶ້ນ" ຈາກອຸປະກອນນີ້ກ່ອນ'); }
-  }catch(e){ showToast('ດຶງຂໍ້ມູນບໍ່ສຳເລັດ, ກວດອິນເຕີເນັດ/ຄ່າຕັ້ງ'); }
+    else{ showToast('ຍັງບໍ່ມີຂໍ້ມູນຢູ່ Realtime Sync — ອຸປະກອນນີ້ອາດຍັງບໍ່ໄດ້ sync ຂຶ້ນສຳເລັດ, ລອງປິດ-ເປີດ Realtime Sync ຄືນເບິ່ງ'); }
+  }catch(e){
+    if(e && e.code === 'permission-denied') showToast('ບໍ່ມີສິດອ່ານຂໍ້ມູນ — ກວດ Firestore rules/ໂໝດ test mode');
+    else showToast('ດຶງຂໍ້ມູນບໍ່ສຳເລັດ, ກວດອິນເຕີເນັດ/ຄ່າຕັ້ງ');
+  }
 }
 
 async function enableFirebaseSync(configText){
@@ -4268,12 +4277,35 @@ async function enableFirebaseSync(configText){
   catch(e){ showToast('ຮູບແບບ Firebase config ບໍ່ຖືກຕ້ອງ (ຕ້ອງເປັນ JSON)'); return false; }
   if(!config.apiKey || !config.projectId){ showToast('Firebase config ຂາດຂໍ້ມູນສຳຄັນ (apiKey/projectId)'); return false; }
   localStorage.setItem(FIREBASE_CONFIG_KEY, JSON.stringify(config));
-  localStorage.setItem(FIREBASE_ENABLED_KEY, '1');
+  localStorage.setItem(FIREBASE_ENABLED_KEY, '1'); // tentative — rolled back below if the write check fails
   firebaseApp = null; firestoreDb = null;
   stopFirebaseListener();
-  const ok = await initFirebaseIfEnabled();
-  if(!ok){ showToast('ເຊື່ອມຕໍ່ Firebase ບໍ່ສຳເລັດ, ກວດ config ອີກຄັ້ງ'); return false; }
-  await pushToFirebase();
+  const connected = await initFirebaseIfEnabled();
+  if(!connected){
+    localStorage.removeItem(FIREBASE_ENABLED_KEY);
+    showToast('ເຊື່ອມຕໍ່ Firebase ບໍ່ສຳເລັດ, ກວດ config ອີກຄັ້ງ (ຫຼືອິນເຕີເນັດ)');
+    return false;
+  }
+  // Actually verify a write succeeds before calling this "enabled" — this is the
+  // check that was missing before: without it, the UI could show "connected"
+  // (green dot) even when Firestore rejected every write (e.g. the Firestore
+  // Database was never created in the console, or rules deny access), and the
+  // person would sit there forever with two devices that both LOOK connected
+  // but neither ever actually reaches the other.
+  const result = await pushToFirebase();
+  if(!result.ok){
+    localStorage.removeItem(FIREBASE_ENABLED_KEY);
+    stopFirebaseListener();
+    firebaseApp = null; firestoreDb = null;
+    if(result.reason === 'permission-denied'){
+      showToast('ບໍ່ມີສິດຂຽນຂໍ້ມູນ — ກວດວ່າໄດ້ສ້າງ Firestore Database ໃນ Firebase Console ແລ້ວ ແລະ ຢູ່ໂໝດ test mode');
+    } else if(result.reason === 'not-configured'){
+      showToast('ໂຫຼດ Firebase SDK ບໍ່ສຳເລັດ, ກວດອິນເຕີເນັດແລ້ວລອງໃໝ່');
+    } else {
+      showToast('Sync ຂຶ້ນ Firebase ບໍ່ສຳເລັດ, ກວດ Firestore Database ໃນ Console ວ່າສ້າງແລ້ວ');
+    }
+    return false;
+  }
   showToast('ເປີດໃຊ້ Realtime Sync ສຳເລັດ');
   return true;
 }
@@ -4346,7 +4378,7 @@ function renderBackupModal(){
             : `<p class="muted" style="margin:0 0 8px; line-height:1.5;">ໃຫ້ທຸກອຸປະກອນ (ມືຖື/tablet) ເຫັນຂໍ້ມູນດຽວກັນທັນທີ ໂດຍບໍ່ຕ້ອງກົດ sync ເອງ. ຕ້ອງສ້າງ Firebase project ຟຣີກ່ອນ (ເບິ່ງວິທີຢູ່ລຸ່ມ), ແລ້ວວາງ config ດຽວກັນນີ້ໃສ່ໃນທຸກອຸປະກອນ.</p>
                <div class="field" style="margin-bottom:8px;">
                  <label>Firebase Config (JSON)</label>
-                 <textarea id="f-firebase-config" rows="4" style="font-family:monospace; font-size:11px;" placeholder='{"apiKey":"...","projectId":"...","...":"..."}'></textarea>
+                 <textarea id="f-firebase-config" rows="4" style="font-family:monospace; font-size:11px;" placeholder='{"apiKey":"...","projectId":"...","...":"..."}'>${esc(localStorage.getItem(FIREBASE_CONFIG_KEY) || '')}</textarea>
                </div>
                <button type="button" class="submit-btn" id="firebase-enable-btn" style="margin-top:0;">ເປີດໃຊ້ Realtime Sync</button>
                <p class="muted" style="margin:8px 0 0; line-height:1.6; font-size:11px;">ວິທີສ້າງ (ຟຣີ): ໄປ console.firebase.google.com &rarr; ສ້າງໂປຣເຈັກ &rarr; ເພີ່ມ "Web app" &rarr; ຄັດລອກ firebaseConfig ວາງໃສ່ຂ້າງເທິງ &rarr; ໄປໜ້າ Firestore Database &rarr; ສ້າງຖານຂໍ້ມູນ (ໂໝດ test ກໍ່ໄດ້ໃນເບື້ອງຕົ້ນ)</p>`
