@@ -3713,7 +3713,7 @@ function quoteRecordRowHtml(q){
   const unlocked = isQuoteUnlocked(q.id);
   const lockTitle = unlocked ? 'ປົດລ໋ອກຢູ່ (ແກ້ໄຂໄດ້) — ແຕະ 2 ຄັ້ງເພື່ອລ໋ອກຄືນ' : 'ລ໋ອກຢູ່ (ແກ້ໄຂບໍ່ໄດ້) — ແຕະ 2 ຄັ້ງເພື່ອປົດລ໋ອກ';
   return `
-    <div class="quote-record-row" data-id="${q.id}" style="background:#fff; border:1px solid var(--dark-10); border-radius:12px; padding:12px; margin-bottom:8px;">
+    <div class="quote-record-row" data-id="${q.id}" style="background:#fff; border:1px solid var(--dark-10); border-radius:12px; padding:10px; margin-bottom:8px;">
       <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:6px;">
         <div style="min-width:0;">
           <div style="font-weight:700; font-size:14px;">ເລກທີ ${esc(q.docNumber)}</div>
@@ -3721,14 +3721,14 @@ function quoteRecordRowHtml(q){
         </div>
         <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
           <div style="font-weight:700; font-size:14px; white-space:nowrap;">${total.toLocaleString()} ກີບ</div>
-          <button type="button" class="q-record-lock" data-id="${q.id}" title="${lockTitle}" style="width:30px; height:30px; border:none; background:${unlocked ? 'rgba(76,122,94,.12)' : 'var(--dark-5)'}; border-radius:8px; padding:0; display:flex; align-items:center; justify-content:center; color:${unlocked ? 'var(--success, #4C7A5E)' : 'var(--danger)'}; cursor:pointer;">${unlocked ? ICONS.lockOpen : ICONS.lockClosed}</button>
+          <button type="button" class="q-record-lock" data-id="${q.id}" title="${lockTitle}" style="width:28px; height:28px; border:none; background:${unlocked ? 'rgba(76,122,94,.12)' : 'var(--dark-5)'}; border-radius:8px; padding:0; display:flex; align-items:center; justify-content:center; color:${unlocked ? 'var(--success, #4C7A5E)' : 'var(--danger)'}; cursor:pointer;">${unlocked ? ICONS.lockOpen : ICONS.lockClosed}</button>
         </div>
       </div>
-      <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-        <button type="button" class="img-btn q-record-edit" data-id="${q.id}" style="flex:1; min-width:90px;">${ICONS.edit || ''} ແກ້ໄຂ</button>
-        <button type="button" class="img-btn q-record-view" data-id="${q.id}" style="flex:1; min-width:90px;">${ICONS.file || ''} ເບິ່ງ</button>
-        <button type="button" class="q-record-pdf" data-id="${q.id}" title="ບັນທຶກເປັນ PDF ລົງເຄື່ອງ" style="flex-shrink:0; width:38px; height:38px; border:none; background:var(--dark-5); border-radius:10px; display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0;"><img src="${PDF_ICON}" alt="PDF" style="width:22px; height:22px; object-fit:contain;"></button>
-        <button type="button" class="q-record-delete" data-id="${q.id}" title="ລຶບ" style="flex-shrink:0; width:38px; height:38px; border:none; background:var(--dark-5); border-radius:10px; display:flex; align-items:center; justify-content:center; color:var(--danger); cursor:pointer; padding:0;">${ICONS.x}</button>
+      <div style="display:flex; gap:6px; flex-wrap:nowrap; align-items:center;">
+        <button type="button" class="img-btn q-record-edit" data-id="${q.id}" style="flex:1; min-width:0; padding-left:4px; padding-right:4px; white-space:nowrap;">${ICONS.edit || ''} ແກ້ໄຂ</button>
+        <button type="button" class="img-btn q-record-view" data-id="${q.id}" style="flex:1; min-width:0; padding-left:4px; padding-right:4px; white-space:nowrap;">${ICONS.file || ''} ເບິ່ງ</button>
+        <button type="button" class="q-record-pdf" data-id="${q.id}" title="ບັນທຶກເປັນ PDF ລົງເຄື່ອງ" style="flex-shrink:0; width:34px; height:34px; border:none; background:var(--dark-5); border-radius:10px; display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0;"><img src="${PDF_ICON}" alt="PDF" style="width:20px; height:20px; object-fit:contain;"></button>
+        <button type="button" class="q-record-delete" data-id="${q.id}" title="ລຶບ" style="flex-shrink:0; width:34px; height:34px; border:none; background:var(--dark-5); border-radius:10px; display:flex; align-items:center; justify-content:center; color:var(--danger); cursor:pointer; padding:0;">${ICONS.x}</button>
       </div>
     </div>
   `;
@@ -3740,8 +3740,8 @@ function renderQuoteListModal(focusId){
   const sorted = [...savedQuotes].sort((a,b)=> new Date(b.updatedAt||b.createdAt) - new Date(a.updatedAt||a.createdAt));
 
   root.innerHTML = `
-    <div class="overlay center" id="quote-list-overlay">
-      <div class="modal" id="quote-list-modal">
+    <div class="overlay center" id="quote-list-overlay" style="padding:0 10px;">
+      <div class="modal" id="quote-list-modal" style="max-width:560px; border-radius:20px; padding-bottom:20px;">
         <div class="modal-head">
           <h2>ເບິ່ງໃບສະເໜີລາຄາ</h2>
           <button class="icon-x" id="quote-list-close">${ICONS.x}</button>
