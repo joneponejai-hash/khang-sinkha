@@ -279,8 +279,8 @@
   .icon-x svg{width:16px; height:16px; color:var(--dark-60);}
   .field{margin-bottom:12px;}
   .field label{font-size:12px; color:var(--dark-50); display:block; margin-bottom:4px;}
-  .field input, .field select{width:100%; background:#fff; border:1px solid var(--dark-10); border-radius:12px; padding:10px 12px; font-size:14px; outline:none; font-family:inherit;}
-  .field input:focus{border-color:var(--accent); box-shadow:0 0 0 3px rgba(232,163,61,.25);}
+  .field input, .field select, .field textarea{width:100%; background:#fff; border:1px solid var(--dark-10); border-radius:12px; padding:10px 12px; font-size:14px; outline:none; font-family:inherit; box-sizing:border-box; resize:vertical;}
+  .field input:focus, .field textarea:focus{border-color:var(--accent); box-shadow:0 0 0 3px rgba(232,163,61,.25);}
   .grid2{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
   .img-picker{display:flex; align-items:center; gap:12px; margin-bottom:14px;}
   .img-box{width:80px; height:80px; border-radius:14px; background:#fff; border:2px dashed var(--dark-15); display:flex; align-items:center; justify-content:center; overflow:hidden; cursor:pointer; flex-shrink:0; padding:0;}
@@ -3967,6 +3967,27 @@ async function findDriveFileId(){
   }
 }
 
+async function fetchDriveDiagnostics(){
+  // Shows exactly which Google account this device is connected as, and every
+  // Drive file matching our backup filename with its last-modified time — the
+  // fastest way to see (from the UI itself, no dev tools needed) whether two
+  // devices are actually pointed at the same Google account / same file, which
+  // is the #1 cause of "sync says success but the other device never sees it".
+  try{
+    const ok = await ensureToken();
+    if(!ok) return null;
+    const aboutRes = await driveRequest('https://www.googleapis.com/drive/v3/about?fields=user(displayName,emailAddress)');
+    const about = await aboutRes.json();
+    const q = encodeURIComponent(`name='${DRIVE_FILE_NAME}' and trashed=false`);
+    const listRes = await driveRequest(`https://www.googleapis.com/drive/v3/files?q=${q}&spaces=drive&fields=files(id,name,modifiedTime)&orderBy=modifiedTime desc`);
+    const listData = await listRes.json();
+    return {
+      email: about.user ? about.user.emailAddress : null,
+      files: (listData.files || []).map(f => ({ id:f.id, modifiedTime:f.modifiedTime }))
+    };
+  } catch(e){ return null; }
+}
+
 async function findOrCreateSheet(){
   let sheetId = localStorage.getItem(SHEET_ID_KEY);
   if(sheetId) return sheetId;
@@ -4092,10 +4113,179 @@ function disconnectDrive(){
 }
 
 function scheduleAutoSync(){
-  if(!localStorage.getItem(GDRIVE_CONNECTED_KEY)) return;
-  clearTimeout(syncDebounceTimer);
-  syncDebounceTimer = setTimeout(()=>{ syncToDrive(true); }, 2500);
+  if(localStorage.getItem(GDRIVE_CONNECTED_KEY)){
+    clearTimeout(syncDebounceTimer);
+    syncDebounceTimer = setTimeout(()=>{ syncToDrive(true); }, 2500);
+  }
+  if(localStorage.getItem(FIREBASE_ENABLED_KEY)){
+    clearTimeout(firebaseSyncDebounceTimer);
+    firebaseSyncDebounceTimer = setTimeout(()=>{ pushToFirebase(); }, 700);
+  }
 }
+
+/* ---------- REAL-TIME SYNC (Firebase Firestore, optional) ----------
+   Google Drive above is manual/backup-style (push then pull on demand).
+   This section is a SEPARATE, OPTIONAL live layer: once a Firebase project's
+   config is pasted in on every device, all devices see each other's changes
+   within about a second, no button presses needed. Requires the shop owner
+   to create their own free Firebase project (see the "ຕັ້ງຄ່າ Realtime Sync"
+   card in the backup modal for the paste-in UI) — this app never ships with
+   a shared Firebase project of its own. */
+const FIREBASE_CONFIG_KEY = 'khang-sinkha-firebase-config';
+const FIREBASE_ENABLED_KEY = 'khang-sinkha-firebase-enabled';
+const FIREBASE_COLLECTION = 'khang-sinkha-shops';
+const FIREBASE_DOC_ID = 'main';
+let firebaseApp = null;
+let firestoreDb = null;
+let firebaseUnsub = null;
+let firebaseListenerStarting = false;
+let firebaseSyncDebounceTimer = null;
+
+function getFirebaseConfig(){
+  try{ return JSON.parse(localStorage.getItem(FIREBASE_CONFIG_KEY) || 'null'); }catch(e){ return null; }
+}
+
+function isFirebaseEnabled(){ return !!localStorage.getItem(FIREBASE_ENABLED_KEY); }
+
+function loadExternalScriptOnce(src){
+  return new Promise((resolve, reject)=>{
+    if(document.querySelector(`script[src="${src}"]`)){ resolve(); return; }
+    const s = document.createElement('script');
+    s.src = src;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error('load-failed'));
+    document.head.appendChild(s);
+  });
+}
+
+async function ensureFirebaseLibs(){
+  if(window.firebase && window.firebase.firestore) return true;
+  try{
+    await loadExternalScriptOnce('https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js');
+    await loadExternalScriptOnce('https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js');
+    return !!(window.firebase && window.firebase.firestore);
+  }catch(e){ return false; }
+}
+
+function firebaseDocRef(){
+  return firestoreDb.collection(FIREBASE_COLLECTION).doc(FIREBASE_DOC_ID);
+}
+
+async function initFirebaseIfEnabled(){
+  if(!isFirebaseEnabled()) return false;
+  const config = getFirebaseConfig();
+  if(!config) return false;
+  const ok = await ensureFirebaseLibs();
+  if(!ok) return false;
+  try{
+    if(!firebaseApp){
+      firebaseApp = (firebase.apps && firebase.apps.length) ? firebase.app() : firebase.initializeApp(config);
+      firestoreDb = firebase.firestore();
+    }
+    startFirebaseListener();
+    return true;
+  } catch(e){ return false; }
+}
+
+function startFirebaseListener(){
+  if(firebaseUnsub || firebaseListenerStarting || !firestoreDb) return;
+  firebaseListenerStarting = true;
+  try{
+    firebaseUnsub = firebaseDocRef().onSnapshot(
+      snap => {
+        firebaseListenerStarting = false;
+        if(!snap.exists) return;
+        // A write we just made ourselves echoes back through this same listener;
+        // hasPendingWrites is true for that local echo (still unconfirmed by the
+        // server), so skipping it here is what stops an infinite push/apply loop.
+        if(snap.metadata.hasPendingWrites) return;
+        applyRemoteFirebaseData(snap.data());
+      },
+      () => { firebaseListenerStarting = false; /* offline/permission error: stay silent, will retry via reconnect */ }
+    );
+  } catch(e){ firebaseListenerStarting = false; }
+}
+
+function stopFirebaseListener(){
+  if(firebaseUnsub){ firebaseUnsub(); firebaseUnsub = null; }
+}
+
+function applyRemoteFirebaseData(data){
+  if(!data) return;
+  if(Array.isArray(data.products)){ products = data.products; try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(products)); }catch(e){} }
+  if(Array.isArray(data.categories)){ CATEGORIES = data.categories; try{ localStorage.setItem(CATEGORIES_KEY, JSON.stringify(CATEGORIES)); }catch(e){} }
+  if(Array.isArray(data.customerOrders)){ customerOrders = data.customerOrders; try{ localStorage.setItem(CUSTOMER_ORDERS_KEY, JSON.stringify(customerOrders)); }catch(e){} }
+  if(Array.isArray(data.purchaseOrders)){ purchaseOrders = data.purchaseOrders; try{ localStorage.setItem(PURCHASE_ORDERS_KEY, JSON.stringify(purchaseOrders)); }catch(e){} }
+  if(Array.isArray(data.scanLog)){ scanLog = data.scanLog; try{ localStorage.setItem(SCANLOG_KEY, JSON.stringify(scanLog)); }catch(e){} }
+  if(data.logo){ logoImg = data.logo; try{ localStorage.setItem(LOGO_KEY, logoImg); }catch(e){} }
+  if(data.cover){ coverImg = data.cover; try{ localStorage.setItem(COVER_KEY, coverImg); }catch(e){} }
+  renderAll();
+  showRealtimeSyncPulse();
+}
+
+function showRealtimeSyncPulse(){
+  // A tiny, unobtrusive flash so the person knows something updated live from
+  // another device, without a disruptive toast every single time.
+  let el = document.getElementById('realtime-sync-pulse');
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'realtime-sync-pulse';
+    el.style.cssText = 'position:fixed; top:calc(env(safe-area-inset-top) + 6px); left:50%; transform:translateX(-50%); background:var(--dark); color:#fff; font-size:11px; font-weight:600; padding:5px 12px; border-radius:999px; z-index:200; opacity:0; transition:opacity .25s; pointer-events:none; display:flex; align-items:center; gap:6px;';
+    el.innerHTML = `<span style="width:6px; height:6px; border-radius:50%; background:#4ADE80; display:inline-block;"></span> ອັບເດດຂໍ້ມູນໃໝ່`;
+    document.body.appendChild(el);
+  }
+  el.style.opacity = '1';
+  clearTimeout(showRealtimeSyncPulse._t);
+  showRealtimeSyncPulse._t = setTimeout(()=>{ el.style.opacity = '0'; }, 1800);
+}
+
+async function pushToFirebase(){
+  try{
+    const ok = await initFirebaseIfEnabled();
+    if(!ok || !firestoreDb) return;
+    const payload = {
+      products, categories:CATEGORIES, customerOrders, purchaseOrders, scanLog,
+      logo:logoImg, cover:coverImg,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    await firebaseDocRef().set(payload, { merge:false });
+  } catch(e){ /* offline or misconfigured — next data change will retry */ }
+}
+
+async function pullFirebaseNow(){
+  const ok = await initFirebaseIfEnabled();
+  if(!ok || !firestoreDb) { showToast('ຍັງບໍ່ໄດ້ຕັ້ງຄ່າ Realtime Sync'); return; }
+  try{
+    const snap = await firebaseDocRef().get();
+    if(snap.exists){ applyRemoteFirebaseData(snap.data()); showToast('ດຶງຂໍ້ມູນຫຼ້າສຸດແລ້ວ'); }
+    else{ showToast('ຍັງບໍ່ມີຂໍ້ມູນຢູ່ Realtime Sync, ກົດ "sync ຂຶ້ນ" ຈາກອຸປະກອນນີ້ກ່ອນ'); }
+  }catch(e){ showToast('ດຶງຂໍ້ມູນບໍ່ສຳເລັດ, ກວດອິນເຕີເນັດ/ຄ່າຕັ້ງ'); }
+}
+
+async function enableFirebaseSync(configText){
+  let config;
+  try{ config = JSON.parse(configText); }
+  catch(e){ showToast('ຮູບແບບ Firebase config ບໍ່ຖືກຕ້ອງ (ຕ້ອງເປັນ JSON)'); return false; }
+  if(!config.apiKey || !config.projectId){ showToast('Firebase config ຂາດຂໍ້ມູນສຳຄັນ (apiKey/projectId)'); return false; }
+  localStorage.setItem(FIREBASE_CONFIG_KEY, JSON.stringify(config));
+  localStorage.setItem(FIREBASE_ENABLED_KEY, '1');
+  firebaseApp = null; firestoreDb = null;
+  stopFirebaseListener();
+  const ok = await initFirebaseIfEnabled();
+  if(!ok){ showToast('ເຊື່ອມຕໍ່ Firebase ບໍ່ສຳເລັດ, ກວດ config ອີກຄັ້ງ'); return false; }
+  await pushToFirebase();
+  showToast('ເປີດໃຊ້ Realtime Sync ສຳເລັດ');
+  return true;
+}
+
+function disableFirebaseSync(){
+  stopFirebaseListener();
+  firebaseApp = null; firestoreDb = null;
+  localStorage.removeItem(FIREBASE_ENABLED_KEY);
+  showToast('ປິດ Realtime Sync ແລ້ວ');
+}
+
+if(isFirebaseEnabled()){ initFirebaseIfEnabled(); }
 
 /* ---------- BACKUP / RESTORE ---------- */
 const LAST_BACKUP_KEY = 'khang-sinkha-last-backup';
@@ -4113,6 +4303,7 @@ function renderBackupModal(){
   const lastSync = localStorage.getItem(GDRIVE_LAST_SYNC_KEY);
   const lastSyncText = lastSync ? new Date(lastSync).toLocaleString('lo-LA') : 'ຍັງບໍ່ເຄີຍ sync';
   const isFile = location.protocol === 'file:';
+  const firebaseEnabled = isFirebaseEnabled();
 
   root.innerHTML = `
     <div class="overlay" id="backup-overlay">
@@ -4132,6 +4323,8 @@ function renderBackupModal(){
                    <button type="button" class="submit-btn" id="sync-pull-btn" style="margin-top:0; flex:1; background:var(--dark-5); color:var(--dark);">${ICONS.upload} ກູ້ຄືນຈາກ Drive</button>
                  </div>
                  <p class="muted" style="margin:0 0 8px;">ເຊື່ອມຕໍ່ແລ້ວ &middot; Sync ລ່າສຸດ: ${esc(lastSyncText)}</p>
+                 <button type="button" class="img-remove" id="drive-diag-btn" style="margin-bottom:8px;">ກວດສອບການເຊື່ອມຕໍ່ Drive</button>
+                 <div id="drive-diag-result"></div>
                  <button type="button" class="img-remove" id="disconnect-btn">ຍົກເລີກການເຊື່ອມຕໍ່</button>`
               : `<p class="muted" style="margin:0 0 8px; line-height:1.5;">ເຊື່ອມຕໍ່ຄັ້ງດຽວ ຈາກນັ້ນສຳຮອງ/ກູ້ຄືນໄດ້ດ້ວຍການກົດປຸ່ມດຽວທຸກຄັ້ງ. Origin ຂອງໜ້ານີ້ (ໃສ່ໃນ Authorized JavaScript origins): <b style="color:var(--dark); font-family:monospace;">${esc(location.origin)}</b></p>
                  <div class="field" style="margin-bottom:8px;">
@@ -4139,6 +4332,24 @@ function renderBackupModal(){
                    <input id="f-clientid" value="${esc(clientId)}" placeholder="xxxxx.apps.googleusercontent.com">
                  </div>
                  <button type="button" class="submit-btn" id="connect-drive-btn" style="margin-top:0;">${ICONS.cloud} ເຊື່ອມຕໍ່ Google Drive</button>`
+          }
+        </div>
+
+        <div class="report-card">
+          <p style="font-weight:600; font-size:14px; margin:0 0 4px; display:flex; align-items:center; gap:6px;">Realtime Sync ${firebaseEnabled ? `<span style="width:7px; height:7px; border-radius:50%; background:#4ADE80; display:inline-block;"></span>` : ''}</p>
+          ${firebaseEnabled
+            ? `<p class="muted" style="margin:0 0 10px; line-height:1.5;">ອຸປະກອນອື່ນທີ່ຕັ້ງຄ່ານີ້ໄວ້ ຈະເຫັນການປ່ຽນແປງພາຍໃນບໍ່ຮອດ 1 ວິນາທີ, ບໍ່ຕ້ອງກົດ sync ເອງ</p>
+               <div style="display:flex; gap:8px; margin-bottom:8px;">
+                 <button type="button" class="submit-btn" id="firebase-pull-btn" style="margin-top:0; flex:1; background:var(--dark-5); color:var(--dark);">${ICONS.upload} ດຶງຂໍ້ມູນຫຼ້າສຸດດຽວນີ້</button>
+               </div>
+               <button type="button" class="img-remove" id="firebase-disable-btn">ປິດ Realtime Sync</button>`
+            : `<p class="muted" style="margin:0 0 8px; line-height:1.5;">ໃຫ້ທຸກອຸປະກອນ (ມືຖື/tablet) ເຫັນຂໍ້ມູນດຽວກັນທັນທີ ໂດຍບໍ່ຕ້ອງກົດ sync ເອງ. ຕ້ອງສ້າງ Firebase project ຟຣີກ່ອນ (ເບິ່ງວິທີຢູ່ລຸ່ມ), ແລ້ວວາງ config ດຽວກັນນີ້ໃສ່ໃນທຸກອຸປະກອນ.</p>
+               <div class="field" style="margin-bottom:8px;">
+                 <label>Firebase Config (JSON)</label>
+                 <textarea id="f-firebase-config" rows="4" style="font-family:monospace; font-size:11px;" placeholder='{"apiKey":"...","projectId":"...","...":"..."}'></textarea>
+               </div>
+               <button type="button" class="submit-btn" id="firebase-enable-btn" style="margin-top:0;">ເປີດໃຊ້ Realtime Sync</button>
+               <p class="muted" style="margin:8px 0 0; line-height:1.6; font-size:11px;">ວິທີສ້າງ (ຟຣີ): ໄປ console.firebase.google.com &rarr; ສ້າງໂປຣເຈັກ &rarr; ເພີ່ມ "Web app" &rarr; ຄັດລອກ firebaseConfig ວາງໃສ່ຂ້າງເທິງ &rarr; ໄປໜ້າ Firestore Database &rarr; ສ້າງຖານຂໍ້ມູນ (ໂໝດ test ກໍ່ໄດ້ໃນເບື້ອງຕົ້ນ)</p>`
           }
         </div>
 
@@ -4188,6 +4399,43 @@ function renderBackupModal(){
   if(syncPullBtn) syncPullBtn.addEventListener('click', syncFromDrive);
   const disconnectBtn = document.getElementById('disconnect-btn');
   if(disconnectBtn) disconnectBtn.addEventListener('click', disconnectDrive);
+  const driveDiagBtn = document.getElementById('drive-diag-btn');
+  if(driveDiagBtn) driveDiagBtn.addEventListener('click', async ()=>{
+    const resultEl = document.getElementById('drive-diag-result');
+    driveDiagBtn.disabled = true;
+    driveDiagBtn.textContent = 'ກຳລັງກວດສອບ...';
+    const info = await fetchDriveDiagnostics();
+    driveDiagBtn.disabled = false;
+    driveDiagBtn.textContent = 'ກວດສອບການເຊື່ອມຕໍ່ Drive';
+    if(!resultEl) return;
+    if(!info){ resultEl.innerHTML = `<p style="color:var(--danger); font-size:12px; margin:0 0 8px;">ກວດສອບບໍ່ສຳເລັດ, ລອງໃໝ່ອີກຄັ້ງ</p>`; return; }
+    const fileRows = info.files.length
+      ? info.files.map((f,i) => `<div style="font-size:11px; font-family:monospace; padding:4px 0; border-top:${i>0?'1px dashed var(--dark-10)':'none'};">#${i+1} ...${esc(f.id.slice(-8))} &middot; ${esc(new Date(f.modifiedTime).toLocaleString('lo-LA'))}</div>`).join('')
+      : `<div style="font-size:11px;">ບໍ່ພົບໄຟລ໌ສຳຮອງໃນບັນຊີນີ້</div>`;
+    resultEl.innerHTML = `
+      <div style="background:var(--dark-5); border-radius:10px; padding:10px 12px; margin-bottom:8px;">
+        <p style="margin:0 0 6px; font-size:12px;"><b>ບັນຊີ Google:</b> ${esc(info.email || 'ບໍ່ຮູ້')}</p>
+        <p style="margin:0 0 4px; font-size:12px;"><b>ໄຟລ໌ສຳຮອງທີ່ພົບ:</b> ${info.files.length} ໄຟລ໌${info.files.length>1?' (ມີຫຼາຍກວ່າ 1 — ນີ້ອາດເປັນສາເຫດຂອງບັນຫາ)':''}</p>
+        ${fileRows}
+      </div>`;
+  });
+
+  const firebaseEnableBtn = document.getElementById('firebase-enable-btn');
+  if(firebaseEnableBtn) firebaseEnableBtn.addEventListener('click', async ()=>{
+    const ta = document.getElementById('f-firebase-config');
+    const text = ta ? ta.value.trim() : '';
+    if(!text){ showToast('ກະລຸນາວາງ Firebase config ກ່ອນ'); return; }
+    firebaseEnableBtn.disabled = true;
+    firebaseEnableBtn.textContent = 'ກຳລັງເຊື່ອມຕໍ່...';
+    await enableFirebaseSync(text);
+    firebaseEnableBtn.disabled = false;
+    firebaseEnableBtn.textContent = 'ເປີດໃຊ້ Realtime Sync';
+    renderBackupModal();
+  });
+  const firebasePullBtn = document.getElementById('firebase-pull-btn');
+  if(firebasePullBtn) firebasePullBtn.addEventListener('click', ()=> pullFirebaseNow());
+  const firebaseDisableBtn = document.getElementById('firebase-disable-btn');
+  if(firebaseDisableBtn) firebaseDisableBtn.addEventListener('click', ()=>{ disableFirebaseSync(); renderBackupModal(); });
 }
 
 function exportData(){
