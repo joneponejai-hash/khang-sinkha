@@ -3281,17 +3281,31 @@ function numberToLaoWords(num){
     }
     return out;
   }
-  const scales = ['', 'ພັນ', 'ລ້ານ', 'ພັນລ້ານ', 'ລ້ານລ້ານ'];
-  let groups = [];
-  let n = Math.abs(num);
-  while(n > 0){ groups.push(n % 1000); n = Math.floor(n/1000); }
-  if(groups.length === 0) groups = [0];
-  let parts = [];
-  for(let i = groups.length - 1; i >= 0; i--){
-    if(groups[i] === 0) continue;
-    parts.push(readUpTo999(groups[i]) + (scales[i] || ''));
+  // ຮູບແບບການອ່ານ: ລ້ານ (1,000,000) → ແສນ (100,000) → [ຕົວເລກ]ພັນ (ຫຼັກພັນ-ໝື່ນ ລວມກັນ ອ່ານເປັນ "...ພັນ")
+  // → ຫຼັກຮ້ອຍ/ສິບ/ໜ່ວຍ ປົກກະຕິ. ຕົວຢ່າງ: 2,850,000 → ສອງລ້ານແປດແສນຫ້າສິບພັນ (ບໍ່ແມ່ນ ...ແປດຮ້ອຍຫ້າສິບພັນ)
+  function readMillionsPart(m){
+    if(m < 1000) return readUpTo999(m);
+    const billions = Math.floor(m/1000);
+    const rem = m % 1000;
+    let out = readUpTo999(billions) + 'ພັນ';
+    if(rem > 0) out += readUpTo999(rem);
+    return out;
   }
-  return (num < 0 ? 'ລົບ' : '') + parts.join('');
+  const n = Math.abs(num);
+  const millions = Math.floor(n / 1000000);
+  const remainder1 = n % 1000000;
+  const hundredThousands = Math.floor(remainder1 / 100000);
+  const remainder2 = remainder1 % 100000;
+  const thousandsGroup = Math.floor(remainder2 / 1000); // 0-99
+  const units = remainder2 % 1000; // 0-999
+
+  let out = '';
+  if(millions > 0) out += readMillionsPart(millions) + 'ລ້ານ';
+  if(hundredThousands > 0) out += digitWords[hundredThousands] + 'ແສນ';
+  if(thousandsGroup > 0) out += readUpTo999(thousandsGroup) + 'ພັນ';
+  if(units > 0) out += readUpTo999(units);
+
+  return (num < 0 ? 'ລົບ' : '') + out;
 }
 
 function nextQuoteDocNumber(){
@@ -3726,7 +3740,7 @@ function renderQuoteListModal(focusId){
   const sorted = [...savedQuotes].sort((a,b)=> new Date(b.updatedAt||b.createdAt) - new Date(a.updatedAt||a.createdAt));
 
   root.innerHTML = `
-    <div class="overlay" id="quote-list-overlay">
+    <div class="overlay center" id="quote-list-overlay">
       <div class="modal" id="quote-list-modal">
         <div class="modal-head">
           <h2>ເບິ່ງໃບສະເໜີລາຄາ</h2>
