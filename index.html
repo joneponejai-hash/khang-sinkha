@@ -515,10 +515,10 @@
 
 <div id="report-fab-menu" class="home-fab-menu">
   <div class="home-fab-backdrop" id="report-fab-backdrop"></div>
-  <button type="button" class="arc-btn arc-1" id="report-arc-btn-1" title="ເບິ່ງໃບສະເໜີລາຄາ"></button>
-  <button type="button" class="arc-btn arc-2" id="report-arc-btn-2" title="ພິມເລກ Barcode"></button>
-  <button type="button" class="arc-btn arc-3" id="report-arc-btn-3" title="ສ້າງເລກ Barcode"></button>
-  <button type="button" class="arc-btn arc-4" id="report-arc-btn-4" title="ອອກໃບສະເໜີລາຄາ/ໃບຮັບເງິນ"></button>
+  <button type="button" class="arc-btn arc-1" id="report-arc-btn-1" title="ອອກໃບສະເໜີລາຄາ"></button>
+  <button type="button" class="arc-btn arc-2" id="report-arc-btn-2" title="ເບິ່ງໃບສະເໜີລາຄາ"></button>
+  <button type="button" class="arc-btn arc-3" id="report-arc-btn-3" title="ສ້າງ Barcode"></button>
+  <button type="button" class="arc-btn arc-4" id="report-arc-btn-4" title="ພິມເລກ Barcode"></button>
   <button type="button" class="arc-btn arc-5" id="report-arc-btn-5" title="ເພີ່ມສາຂາຂົນສົ່ງ"></button>
 </div>
 
@@ -552,6 +552,8 @@
 <div id="partial-receive-root"></div>
 <div id="quick-scan-root"></div>
 <div id="order-action-root"></div>
+<div id="quote-root"></div>
+<div id="quote-list-root"></div>
 <div id="toast-root"></div>
 
 <script>
@@ -613,7 +615,10 @@ const ICONS = {
   check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
   receiptCheck: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v12.5a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v4h4"/><line x1="7" y1="11" x2="14" y2="11"/><line x1="7" y1="14" x2="11" y2="14"/><text x="6.6" y="20.2" font-size="6.4" stroke="none" fill="currentColor" font-family="sans-serif" font-weight="700">$</text><circle cx="17.5" cy="18" r="4.6" fill="#fff" stroke="currentColor"/><polyline points="15.7 18 17 19.3 19.4 16.7" stroke-width="2"/></svg>',
   arrowLeft: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>',
-  boxIn: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="12" width="16" height="9" rx="1"/><path d="M4 12 2 8"/><path d="M20 12l2-4"/><line x1="12" y1="3" x2="12" y2="12"/><polyline points="8 8 12 12 16 8"/></svg>'
+  boxIn: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="12" width="16" height="9" rx="1"/><path d="M4 12 2 8"/><path d="M20 12l2-4"/><line x1="12" y1="3" x2="12" y2="12"/><polyline points="8 8 12 12 16 8"/></svg>',
+  save: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>',
+  lockClosed: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>',
+  lockOpen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>'
 };
 
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
@@ -2922,8 +2927,18 @@ function buildPaginatedPdfPages(headerHtml, bodyHtml){
   const theadHtml = theadEl ? theadEl.outerHTML : '';
   const summaryHtmlStr = summaryEl ? summaryEl.outerHTML : '';
 
+  /* ເນື້ອຫາທີ່ຢູ່ຫຼັງຕາຕະລາງ (ເຊັ່ນ: ຈຳນວນເງິນເປັນຕົວໜັງສື, ບ່ອນເຊັນ) ຕ້ອງບໍ່ຖືກຖິ້ມ —
+     ໃຫ້ໄປຕໍ່ທ້າຍໜ້າສຸດທ້າຍ ຫຼັງຈາກສ່ວນຕາຕະລາງຂອງໜ້ານັ້ນ */
+  let afterTableHtml = '';
+  let sib = tableEl.nextSibling;
+  while(sib){
+    if(sib.outerHTML !== undefined) afterTableHtml += sib.outerHTML;
+    else if(sib.nodeType === 3) afterTableHtml += sib.textContent;
+    sib = sib.nextSibling;
+  }
+
   if(rows.length <= 1){
-    return [ headerHtml + summaryHtmlStr + `<table class="print-table">${theadHtml}<tbody>${rows.map(r=>r.outerHTML).join('')}</tbody></table>` ];
+    return [ headerHtml + summaryHtmlStr + `<table class="print-table">${theadHtml}<tbody>${rows.map(r=>r.outerHTML).join('')}</tbody></table>` + afterTableHtml ];
   }
 
   const stage = document.createElement('div');
@@ -2972,18 +2987,19 @@ function buildPaginatedPdfPages(headerHtml, bodyHtml){
     const rowsHtml = rows.slice(start,end).map(r=>r.outerHTML).join('');
     const tableHtml = `<table class="print-table">${theadHtml}<tbody>${rowsHtml}</tbody></table>`;
     const topBlock = i === 0 ? (headerHtml + summaryHtmlStr) : '';
+    const isLast = i === totalPages - 1;
     const footer = totalPages > 1 ? `<div class="pdf-page-footer">ໜ້າ ${i+1}/${totalPages}</div>` : '';
-    return `${topBlock}${tableHtml}${footer}`;
+    return `${topBlock}${tableHtml}${isLast ? afterTableHtml : ''}${footer}`;
   });
 }
 
 let currentPdfPreviewTitle = '';
-function showPdfPreview(title, bodyHtml){
+function showPdfPreview(title, bodyHtml, customHeaderHtml){
   const root = document.getElementById('pdf-preview-root');
   if(!root) return;
   currentPdfPreviewTitle = title;
   const now = new Date().toLocaleString('lo-LA');
-  const headerHtml = `
+  const headerHtml = customHeaderHtml !== undefined ? customHeaderHtml : `
     <div class="print-header">
       ${logoImg ? `<img src="${logoImg}" class="print-logo">` : ''}
       <div>
@@ -3155,6 +3171,611 @@ async function downloadPdfPreview(){
   }
 }
 
+/* ສ້າງ jsPDF ໂດຍກົງຈາກ header/body HTML ໃດໆ ໂດຍບໍ່ຕ້ອງເປີດ preview popup ກ່ອນ —
+   ໃຊ້ສຳລັບປຸ່ມ PDF ດ່ວນ (ເຊັ່ນ ຢູ່ແຕ່ລະລາຍການໃນ "ເບິ່ງໃບສະເໜີລາຄາ") ທີ່ຕ້ອງການບັນທຶກລົງເຄື່ອງທັນທີ. */
+async function buildPdfDocFromHtml(headerHtml, bodyHtml){
+  const pagesHtml = buildPaginatedPdfPages(headerHtml, bodyHtml);
+  const stack = document.createElement('div');
+  stack.className = 'pdf-pages-stack';
+  stack.style.position = 'fixed';
+  stack.style.left = '-99999px';
+  stack.style.top = '0';
+  stack.style.transform = 'none';
+  stack.innerHTML = pagesHtml.map(pageInner => `<div class="pdf-page">${pageInner}</div>`).join('');
+  document.body.appendChild(stack);
+  try{
+    const pages = Array.from(stack.querySelectorAll('.pdf-page'));
+    if(!pages.length) return null;
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ unit:'mm', format:'a4', orientation:'portrait' });
+    for(let i=0;i<pages.length;i++){
+      const canvas = await window.html2canvas(pages[i], { scale:2, backgroundColor:'#ffffff', useCORS:true });
+      const imgData = canvas.toDataURL('image/jpeg', 0.92);
+      if(i > 0) pdf.addPage();
+      pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+    }
+    return pdf;
+  } finally {
+    document.body.removeChild(stack);
+  }
+}
+
+
+/* ---------- ໃບສະເໜີລາຄາ / ໃບຮັບເງິນ (Quotation / Receipt) ---------- */
+const QUOTE_NUMBER_KEY = 'khang-sinkha-quote-number';
+const QUOTE_SHOPINFO_KEY = 'khang-sinkha-quote-shopinfo';
+const QUOTES_STORAGE_KEY = 'khang-sinkha-quotes-v1';
+
+let savedQuotes = [];
+try{ savedQuotes = JSON.parse(localStorage.getItem(QUOTES_STORAGE_KEY) || '[]'); }catch(e){ savedQuotes = []; }
+function persistSavedQuotes(){ try{ localStorage.setItem(QUOTES_STORAGE_KEY, JSON.stringify(savedQuotes)); }catch(e){} }
+
+/* ---------- ລ໋ອກ/ປົດລ໋ອກເອກະສານ (ປ້ອງກັນການແກ້ໄຂໂດຍບັງເອີນ ຫຼື ຈາກຄົນທີ່ບໍ່ໄດ້ຮັບອະນຸຍາດ) ----------
+   ສະຖານະນີ້ຢູ່ໃນຄວາມຈຳຊົ່ວຄາວ (ບໍ່ໄດ້ບັນທຶກລົງ localStorage) ເພາະມັນມີອາຍຸແຄ່ 5 ນາທີ ຫຼັງຈາກນັ້ນຈະລ໋ອກຄືນອັດຕະໂນມັດ.
+   ທຸກເອກະສານທີ່ບັນທຶກໄວ້ຈະລ໋ອກໄວ້ໂດຍຄ່າເລີ່ມຕົ້ນ (ຕ້ອງແຕະໜ່ວຍກຸນແຈ 2 ຄັ້ງຕິດກັນເພື່ອປົດລ໋ອກ). */
+const QUOTE_LOCK_TIMEOUT_MS = 5 * 60 * 1000;
+let quoteUnlockedIds = {};   // id -> true ໃນຂະນະທີ່ປົດລ໋ອກຢູ່
+let quoteLockTimers = {};    // id -> setTimeout handle ສຳລັບການລ໋ອກຄືນອັດຕະໂນມັດ
+let quoteLastTapAt = {};     // id -> timestamp ຂອງການແຕະຄັ້ງກ່ອນ (ສຳລັບກວດ double-tap)
+
+function isQuoteUnlocked(id){ return !!quoteUnlockedIds[id]; }
+
+/* ວາງໜ້າ list ຄືນໃໝ່ ສະເພາະຕອນທີ່ pop up ນັ້ນເປີດຢູ່ຈິງໆ — ຖ້າບໍ່ດັ່ງນັ້ນ ການລ໋ອກຄືນອັດຕະໂນມັດ
+   (ຊຶ່ງອາດເກີດຂຶ້ນຫຼັງຈາກຜູ້ໃຊ້ອອກຈາກໜ້ານີ້ໄປແລ້ວ) ຈະໄປເປີດ pop up ຄືນໂດຍບໍ່ຕັ້ງໃຈ. */
+function refreshQuoteListIfOpen(){
+  if(document.getElementById('quote-list-overlay')) renderQuoteListModal();
+}
+
+function scheduleQuoteAutoLock(id){
+  if(quoteLockTimers[id]) clearTimeout(quoteLockTimers[id]);
+  quoteLockTimers[id] = setTimeout(()=>{
+    delete quoteUnlockedIds[id];
+    delete quoteLockTimers[id];
+    refreshQuoteListIfOpen();
+  }, QUOTE_LOCK_TIMEOUT_MS);
+}
+
+function unlockQuoteRecord(id){
+  quoteUnlockedIds[id] = true;
+  scheduleQuoteAutoLock(id);
+  showToast('ປົດລ໋ອກແລ້ວ, ສາມາດແກ້ໄຂໄດ້ພາຍໃນ 5 ນາທີ');
+  refreshQuoteListIfOpen();
+}
+
+function lockQuoteRecord(id){
+  delete quoteUnlockedIds[id];
+  if(quoteLockTimers[id]){ clearTimeout(quoteLockTimers[id]); delete quoteLockTimers[id]; }
+  refreshQuoteListIfOpen();
+}
+
+function handleQuoteLockTap(id){
+  const now = Date.now();
+  const last = quoteLastTapAt[id] || 0;
+  if(now - last < 400){
+    quoteLastTapAt[id] = 0;
+    if(isQuoteUnlocked(id)) lockQuoteRecord(id);
+    else unlockQuoteRecord(id);
+  } else {
+    quoteLastTapAt[id] = now;
+  }
+}
+
+function numberToLaoWords(num){
+  num = Math.round(Number(num) || 0);
+  if(num === 0) return 'ສູນ';
+  const digitWords = ['ສູນ','ໜຶ່ງ','ສອງ','ສາມ','ສີ່','ຫ້າ','ຫົກ','ເຈັດ','ແປດ','ເກົ້າ'];
+  function readUpTo999(n){
+    let out = '';
+    const h = Math.floor(n/100);
+    const rem = n%100;
+    const t = Math.floor(rem/10);
+    const o = rem%10;
+    if(h>0) out += digitWords[h] + 'ຮ້ອຍ';
+    if(t>0){
+      if(t===1) out += 'ສິບ';
+      else if(t===2) out += 'ຊາວ';
+      else out += digitWords[t] + 'ສິບ';
+    }
+    if(o>0){
+      out += (t>0 && o===1) ? 'ເອັດ' : digitWords[o];
+    }
+    return out;
+  }
+  const scales = ['', 'ພັນ', 'ລ້ານ', 'ພັນລ້ານ', 'ລ້ານລ້ານ'];
+  let groups = [];
+  let n = Math.abs(num);
+  while(n > 0){ groups.push(n % 1000); n = Math.floor(n/1000); }
+  if(groups.length === 0) groups = [0];
+  let parts = [];
+  for(let i = groups.length - 1; i >= 0; i--){
+    if(groups[i] === 0) continue;
+    parts.push(readUpTo999(groups[i]) + (scales[i] || ''));
+  }
+  return (num < 0 ? 'ລົບ' : '') + parts.join('');
+}
+
+function nextQuoteDocNumber(){
+  const n = parseInt(localStorage.getItem(QUOTE_NUMBER_KEY) || '1', 10) || 1;
+  return String(n);
+}
+function loadQuoteShopInfo(){
+  try{
+    return JSON.parse(localStorage.getItem(QUOTE_SHOPINFO_KEY) || 'null') || {};
+  }catch(e){ return {}; }
+}
+function saveQuoteShopInfo(info){
+  try{ localStorage.setItem(QUOTE_SHOPINFO_KEY, JSON.stringify(info)); }catch(e){}
+}
+
+let quoteFormState = null;
+
+function blankQuoteItem(){ return { name:'', size:'', qty:'1', price:'' }; }
+
+function openQuoteModal(existingRecord){
+  if(existingRecord){
+    quoteFormState = {
+      id: existingRecord.id,
+      docType: existingRecord.docType || 'quote',
+      docNumber: existingRecord.docNumber != null ? String(existingRecord.docNumber) : '',
+      date: existingRecord.date || new Date().toISOString().slice(0,10),
+      shopName: existingRecord.shopName || '',
+      shopAddress: existingRecord.shopAddress || '',
+      shopPhone: existingRecord.shopPhone || '',
+      shopEmail: existingRecord.shopEmail || '',
+      logo: existingRecord.logo || null,
+      signer: existingRecord.signer || '',
+      items: Array.isArray(existingRecord.items) && existingRecord.items.length
+        ? existingRecord.items.map(it => ({ name:it.name||'', size:it.size||'', qty:String(it.qty!=null?it.qty:''), price:String(it.price!=null?it.price:'') }))
+        : [ blankQuoteItem() ]
+    };
+    renderQuoteModal();
+    return;
+  }
+  const saved = loadQuoteShopInfo();
+  quoteFormState = {
+    id: null,
+    docType: 'quote',
+    docNumber: nextQuoteDocNumber(),
+    date: new Date().toISOString().slice(0,10),
+    shopName: saved.shopName != null ? saved.shopName : 'MEN SHOP OFFICIAL',
+    shopAddress: saved.shopAddress != null ? saved.shopAddress : '',
+    shopPhone: saved.shopPhone != null ? saved.shopPhone : '',
+    shopEmail: saved.shopEmail != null ? saved.shopEmail : '',
+    logo: saved.logo != null ? saved.logo : (logoImg || null),
+    signer: saved.signer != null ? saved.signer : '',
+    items: [ blankQuoteItem() ]
+  };
+  renderQuoteModal();
+}
+
+function closeQuoteModal(){
+  const root = document.getElementById('quote-root');
+  if(root) root.innerHTML = '';
+  quoteFormState = null;
+}
+
+function quoteItemsTotal(){
+  return quoteFormState.items.reduce((s,it)=> s + (Number(it.qty)||0) * (Number(it.price)||0), 0);
+}
+
+function quoteItemRowHtml(it, idx){
+  const fieldLabel = (text)=> `<label style="display:block; font-size:11px; color:var(--dark-40); margin-bottom:3px;">${text}</label>`;
+  const fieldStyle = 'width:100%; box-sizing:border-box; background:#fff; border:1px solid var(--dark-10); border-radius:10px; padding:8px 10px; font-size:13px; font-family:inherit;';
+  return `
+    <div class="quote-item-row" data-idx="${idx}" style="background:var(--dark-3, #f7f6f4); border:1px solid var(--dark-10); border-radius:12px; padding:10px; margin-bottom:8px;">
+      <div style="display:flex; gap:8px; align-items:flex-end; margin-bottom:8px;">
+        <div style="flex:1; min-width:0;">
+          ${fieldLabel('ຊື່ສິນຄ້າ')}
+          <input list="q-product-list" class="q-item-name" data-field="name" data-idx="${idx}" placeholder="ຊື່ສິນຄ້າ" value="${esc(it.name)}" style="${fieldStyle}">
+        </div>
+        <button type="button" class="q-item-remove" data-idx="${idx}" title="ລຶບ" style="flex-shrink:0; width:36px; height:36px; border:none; background:var(--dark-5); border-radius:10px; display:flex; align-items:center; justify-content:center; color:var(--danger); cursor:pointer;">${ICONS.x}</button>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:8px;">
+        <div>
+          ${fieldLabel('ຂະໜາດ')}
+          <input class="q-item-size" data-field="size" data-idx="${idx}" placeholder="ຂະໜາດ" value="${esc(it.size)}" style="${fieldStyle}">
+        </div>
+        <div>
+          ${fieldLabel('ຈຳນວນ')}
+          <input type="number" min="0" class="q-item-qty" data-field="qty" data-idx="${idx}" placeholder="ຈຳນວນ" value="${esc(it.qty)}" style="${fieldStyle}">
+        </div>
+        <div>
+          ${fieldLabel('ລາຄາ')}
+          <input type="number" min="0" class="q-item-price" data-field="price" data-idx="${idx}" placeholder="ລາຄາ" value="${esc(it.price)}" style="${fieldStyle}">
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderQuoteModal(){
+  const root = document.getElementById('quote-root');
+  if(!root || !quoteFormState) return;
+  const s = quoteFormState;
+  const productOptions = products.map(p => `<option value="${esc(p.name)}" label="${p.price>0 ? Number(p.price).toLocaleString()+' ກີບ' : ''}">`).join('');
+  const total = quoteItemsTotal();
+
+  root.innerHTML = `
+    <div class="overlay" id="quote-overlay">
+      <div class="modal" id="quote-modal" style="max-width:540px;">
+        <div class="modal-head">
+          <h2>${s.id ? 'ແກ້ໄຂເອກະສານ' : 'ອອກໃບສະເໜີລາຄາ/ໃບຮັບເງິນ'}</h2>
+          <button class="icon-x" id="quote-close">${ICONS.x}</button>
+        </div>
+
+        <div class="field">
+          <label>ປະເພດເອກະສານ</label>
+          <select id="q-doctype">
+            <option value="quote" ${s.docType==='quote'?'selected':''}>ໃບສະເໜີລາຄາ (Quotation)</option>
+            <option value="receipt" ${s.docType==='receipt'?'selected':''}>ໃບຮັບເງິນ (Receipt)</option>
+          </select>
+        </div>
+
+        <div style="display:flex; gap:8px;">
+          <div class="field" style="flex:1;">
+            <label>ເລກທີ</label>
+            <input id="q-docnumber" value="${esc(s.docNumber)}">
+          </div>
+          <div class="field" style="flex:1;">
+            <label>ວັນທີ</label>
+            <input type="date" id="q-date" value="${esc(s.date)}">
+          </div>
+        </div>
+
+        <details style="margin-bottom:14px;">
+          <summary style="cursor:pointer; font-size:12px; color:var(--dark-50); margin-bottom:8px;">ຂໍ້ມູນຮ້ານ (ສະແດງຢູ່ຫົວໃບ)</summary>
+          <div class="field">
+            <label>ໂລໂກ້ຮ້ານ</label>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <button type="button" class="img-box" id="q-logo-pick-btn" style="width:56px; height:56px;">${s.logo ? `<img src="${s.logo}" alt="">` : ICONS.image}</button>
+              <div style="display:flex; flex-direction:column; gap:6px;">
+                <button type="button" class="img-btn" id="q-logo-pick-btn2">${s.logo ? 'ປ່ຽນຮູບ' : 'ເລືອກຮູບໂລໂກ້'}</button>
+                ${s.logo ? '<button type="button" class="img-remove" id="q-logo-remove-btn">ລຶບຮູບ</button>' : ''}
+              </div>
+            </div>
+            <input type="file" accept="image/*" id="q-logo-input" style="display:none">
+          </div>
+          <div class="field"><label>ຊື່ຮ້ານ</label><input id="q-shopname" value="${esc(s.shopName)}"></div>
+          <div class="field"><label>ທີ່ຢູ່</label><input id="q-shopaddress" value="${esc(s.shopAddress)}" placeholder="ບ້ານ, ເມືອງ, ນະຄອນຫຼວງ/ແຂວງ"></div>
+          <div class="field"><label>ເບີໂທ</label><input id="q-shopphone" value="${esc(s.shopPhone)}"></div>
+          <div class="field"><label>ອີເມລ</label><input id="q-shopemail" value="${esc(s.shopEmail)}"></div>
+        </details>
+
+        <label style="font-size:12px; color:var(--dark-50); display:block; margin-bottom:6px;">ລາຍການສິນຄ້າ</label>
+        <datalist id="q-product-list">${productOptions}</datalist>
+        <div id="q-items">${s.items.map((it,i)=>quoteItemRowHtml(it,i)).join('')}</div>
+        <button type="button" class="img-remove" id="q-add-row" style="margin-bottom:14px;">${ICONS.plus} ເພີ່ມລາຍການ</button>
+
+        <div class="field">
+          <label>ຊື່ຜູ້ເຊັນ / ຕຳແໜ່ງ</label>
+          <input id="q-signer" placeholder="ຊື່ ແລະ ຕຳແໜ່ງ" value="${esc(s.signer)}">
+        </div>
+
+        <p class="muted" style="margin:0 0 12px; font-size:13px;">ລວມທັງໝົດ: <b style="color:var(--dark);">${total.toLocaleString()} ກີບ</b></p>
+
+        <button type="button" class="submit-btn" id="q-generate-btn" style="margin-top:0;">${ICONS.save} ບັນທຶກ</button>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('quote-overlay').addEventListener('click', e=>{ if(e.target.id==='quote-overlay') closeQuoteModal(); });
+  document.getElementById('quote-close').addEventListener('click', closeQuoteModal);
+
+  document.getElementById('q-doctype').addEventListener('change', e=>{ quoteFormState.docType = e.target.value; });
+  document.getElementById('q-docnumber').addEventListener('input', e=>{ quoteFormState.docNumber = e.target.value; });
+  document.getElementById('q-date').addEventListener('input', e=>{ quoteFormState.date = e.target.value; });
+  document.getElementById('q-logo-pick-btn').addEventListener('click', ()=>document.getElementById('q-logo-input').click());
+  document.getElementById('q-logo-pick-btn2').addEventListener('click', ()=>document.getElementById('q-logo-input').click());
+  document.getElementById('q-logo-input').addEventListener('change', e=>{
+    const file = e.target.files && e.target.files[0];
+    if(!file) return;
+    resizeImage(file, 320, 0.9).then(dataUrl=>{
+      quoteFormState.logo = dataUrl;
+      renderQuoteModal();
+    }).catch(()=>{ showToast('ເລືອກຮູບບໍ່ສຳເລັດ'); });
+  });
+  const qLogoRemoveBtn = document.getElementById('q-logo-remove-btn');
+  if(qLogoRemoveBtn) qLogoRemoveBtn.addEventListener('click', ()=>{ quoteFormState.logo = null; renderQuoteModal(); });
+  document.getElementById('q-shopname').addEventListener('input', e=>{ quoteFormState.shopName = e.target.value; });
+  document.getElementById('q-shopaddress').addEventListener('input', e=>{ quoteFormState.shopAddress = e.target.value; });
+  document.getElementById('q-shopphone').addEventListener('input', e=>{ quoteFormState.shopPhone = e.target.value; });
+  document.getElementById('q-shopemail').addEventListener('input', e=>{ quoteFormState.shopEmail = e.target.value; });
+  document.getElementById('q-signer').addEventListener('input', e=>{ quoteFormState.signer = e.target.value; });
+
+  document.getElementById('q-items').querySelectorAll('input').forEach(inp=>{
+    inp.addEventListener('input', e=>{
+      const idx = Number(e.target.dataset.idx);
+      const field = e.target.dataset.field;
+      if(!quoteFormState.items[idx]) return;
+      quoteFormState.items[idx][field] = e.target.value;
+      if(field === 'name'){
+        const match = products.find(p => p.name === e.target.value);
+        if(match && !quoteFormState.items[idx].price){
+          quoteFormState.items[idx].price = String(match.price || '');
+          renderQuoteModal();
+          return;
+        }
+      }
+      const totalEl = root.querySelector('.submit-btn') ? root.querySelector('p.muted b') : null;
+      if(totalEl) totalEl.textContent = quoteItemsTotal().toLocaleString() + ' ກີບ';
+    });
+  });
+
+  document.getElementById('q-add-row').addEventListener('click', ()=>{
+    quoteFormState.items.push(blankQuoteItem());
+    renderQuoteModal();
+  });
+
+  document.getElementById('q-items').querySelectorAll('.q-item-remove').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      const idx = Number(e.currentTarget.dataset.idx);
+      if(quoteFormState.items.length <= 1){
+        quoteFormState.items[0] = blankQuoteItem();
+      } else {
+        quoteFormState.items.splice(idx, 1);
+      }
+      renderQuoteModal();
+    });
+  });
+
+  document.getElementById('q-generate-btn').addEventListener('click', saveQuoteRecord);
+}
+
+function buildQuoteDocumentParts(state){
+  const items = state.items.filter(it => (it.name||'').trim());
+  const totalQty = items.reduce((s,it)=> s + (Number(it.qty)||0), 0);
+  const totalAmount = items.reduce((s,it)=> s + (Number(it.qty)||0) * (Number(it.price)||0), 0);
+  const isReceipt = state.docType === 'receipt';
+  const title = isReceipt ? 'ໃບຮັບເງິນ' : 'ໃບສະເໜີລາຄາ';
+  const titleEn = isReceipt ? '(Receipt)' : '(Quotation)';
+  let dateLabel = state.date;
+  try{
+    const [y,m,d] = state.date.split('-');
+    if(y && m && d) dateLabel = `${d}/${m}/${y}`;
+  }catch(e){}
+
+  const headerHtml = `
+    <div style="text-align:center; font-size:12px; margin-bottom:10px; line-height:1.5;">
+      <div>ສາທາລະນະລັດ ປະຊາທິປະໄຕ ປະຊາຊົນລາວ</div>
+      <div>ສັນຕິພາບ ເອກະລາດ ປະຊາທິປະໄຕ ເອກະພາບ ວັດທະນະຖາວອນ</div>
+    </div>
+    <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; border-bottom:2px solid #1C2B33; padding-bottom:10px; margin-bottom:14px;">
+      <div style="display:flex; gap:10px; align-items:center;">
+        ${state.logo ? `<img src="${state.logo}" style="width:52px; height:52px; border-radius:10px; object-fit:cover; flex-shrink:0;">` : ''}
+        <div>
+          <div style="font-weight:800; font-size:15px;">${esc(state.shopName)}</div>
+          ${state.shopAddress ? `<div style="font-size:11px; color:#555; margin-top:2px;">${esc(state.shopAddress)}</div>` : ''}
+          ${(state.shopPhone || state.shopEmail) ? `<div style="font-size:11px; color:#555;">${state.shopPhone ? esc(state.shopPhone) : ''}${state.shopPhone && state.shopEmail ? ' &middot; ' : ''}${state.shopEmail ? esc(state.shopEmail) : ''}</div>` : ''}
+        </div>
+      </div>
+      <div style="text-align:right; font-size:11px; color:#555; white-space:nowrap;">
+        <div>ເລກທີ: ${esc(state.docNumber)}</div>
+        <div>ວັນທີ: ${esc(dateLabel)}</div>
+      </div>
+    </div>
+    <div style="text-align:center; margin-bottom:14px;">
+      <div style="font-size:17px; font-weight:800;">${title}</div>
+      <div style="font-size:12px; color:#777;">${titleEn}</div>
+    </div>
+  `;
+
+  const rowsHtml = items.map((it,i) => `
+    <tr>
+      <td style="text-align:center;">${i+1}</td>
+      <td>${esc(it.name)}</td>
+      <td style="text-align:center;">${esc(it.size || '-')}</td>
+      <td class="num">${(Number(it.qty)||0).toLocaleString()}</td>
+      <td class="num">${(Number(it.price)||0).toLocaleString()}</td>
+      <td class="num">${((Number(it.qty)||0)*(Number(it.price)||0)).toLocaleString()}</td>
+    </tr>
+  `).join('') || `<tr><td colspan="6" style="text-align:center; color:#888;">ຍັງບໍ່ມີລາຍການສິນຄ້າ</td></tr>`;
+
+  const bodyHtml = `
+    <table class="print-table" style="margin-bottom:4px;">
+      <thead><tr>
+        <th style="width:44px; text-align:center;">ລ/ດ</th>
+        <th>ຊື່ສິນຄ້າ</th>
+        <th style="width:70px; text-align:center;">ຂະໜາດ</th>
+        <th class="num" style="width:60px;">ຈຳນວນ</th>
+        <th class="num" style="width:90px;">ລາຄາ/ໜ່ວຍ</th>
+        <th class="num" style="width:110px;">ມູນຄ່າ (ກີບ)</th>
+      </tr></thead>
+      <tbody>${rowsHtml}
+        <tr style="font-weight:700;">
+          <td colspan="3" style="text-align:right;">ລວມທັງໝົດ</td>
+          <td class="num">${totalQty.toLocaleString()}</td>
+          <td></td>
+          <td class="num">${totalAmount.toLocaleString()}</td>
+        </tr>
+      </tbody>
+    </table>
+    <div style="margin:14px 0 40px; font-size:12px; text-align:center;">ຈຳນວນເງິນເປັນຕົວໜັງສື: <b>${esc(numberToLaoWords(totalAmount))}ກີບ</b></div>
+    <div style="display:flex; justify-content:flex-end;">
+      <div style="text-align:center; font-size:12px;">
+        <div style="margin-bottom:50px;">${isReceipt ? 'ຜູ້ຮັບເງິນ' : 'ຫົວໜ້າສາຂາ'}</div>
+        <div style="border-top:1px solid #999; padding-top:4px; min-width:150px;">${esc(state.signer || '')}</div>
+      </div>
+    </div>
+  `;
+
+  return { title: `${title} ${titleEn}`, headerHtml, bodyHtml, hasItems: items.length > 0 };
+}
+
+function saveQuoteRecord(){
+  const state = quoteFormState;
+  if(!state) return;
+  const { hasItems } = buildQuoteDocumentParts(state);
+  if(!hasItems){ showToast('ກະລຸນາໃສ່ລາຍການສິນຄ້າຢ່າງໜ້ອຍ 1 ລາຍການ'); return; }
+
+  saveQuoteShopInfo({
+    shopName: state.shopName, shopAddress: state.shopAddress,
+    shopPhone: state.shopPhone, shopEmail: state.shopEmail, signer: state.signer, logo: state.logo
+  });
+
+  const cleanItems = state.items
+    .filter(it => (it.name||'').trim())
+    .map(it => ({ name:it.name, size:it.size||'', qty:Number(it.qty)||0, price:Number(it.price)||0 }));
+  const now = new Date().toISOString();
+  let savedId = state.id;
+
+  if(state.id){
+    const idx = savedQuotes.findIndex(q => q.id === state.id);
+    const updated = {
+      id: state.id, docType: state.docType, docNumber: state.docNumber, date: state.date,
+      shopName: state.shopName, shopAddress: state.shopAddress, shopPhone: state.shopPhone, shopEmail: state.shopEmail,
+      logo: state.logo, signer: state.signer, items: cleanItems,
+      createdAt: (idx >= 0 && savedQuotes[idx].createdAt) ? savedQuotes[idx].createdAt : now,
+      updatedAt: now
+    };
+    if(idx >= 0) savedQuotes[idx] = updated; else savedQuotes.push(updated);
+  } else {
+    const nextNum = parseInt(state.docNumber, 10);
+    if(!isNaN(nextNum)) localStorage.setItem(QUOTE_NUMBER_KEY, String(nextNum + 1));
+    savedId = uid();
+    savedQuotes.push({
+      id: savedId, docType: state.docType, docNumber: state.docNumber, date: state.date,
+      shopName: state.shopName, shopAddress: state.shopAddress, shopPhone: state.shopPhone, shopEmail: state.shopEmail,
+      logo: state.logo, signer: state.signer, items: cleanItems,
+      createdAt: now, updatedAt: now
+    });
+  }
+  persistSavedQuotes();
+  scheduleAutoSync();
+
+  // ຫຼັງບັນທຶກ, ເອກະສານຍັງຄົງປົດລ໋ອກໄວ້ອີກ 5 ນາທີ (ເຜື່ອຕ້ອງແກ້ໄຂຕໍ່) ແລ້ວຈິ່ງລ໋ອກຄືນອັດຕະໂນມັດ.
+  quoteUnlockedIds[savedId] = true;
+  scheduleQuoteAutoLock(savedId);
+
+  closeQuoteModal();
+  showToast('ບັນທຶກແລ້ວ');
+  openQuoteListModal(savedId);
+}
+
+function openQuotePdfFromRecord(record){
+  const { title, headerHtml, bodyHtml } = buildQuoteDocumentParts(record);
+  showPdfPreview(title, bodyHtml, headerHtml);
+}
+
+/* ປຸ່ມ PDF ດ່ວນ ຢູ່ແຕ່ລະລາຍການໃນໜ້າ "ເບິ່ງໃບສະເໜີລາຄາ": ບັນທຶກເປັນ PDF ລົງເຄື່ອງທັນທີ ບໍ່ຕ້ອງເປີດ preview ກ່ອນ. */
+async function downloadQuotePdfDirect(record, btn){
+  if(btn) btn.disabled = true;
+  showToast('ກຳລັງສ້າງໄຟລ໌ PDF...');
+  try{
+    const ok = await ensurePdfLibs();
+    if(!ok){ showToast('ບໍ່ສາມາດສ້າງໄຟລ໌ PDF ໄດ້, ກະລຸນາເຊື່ອມຕໍ່ອິນເຕີເນັດແລ້ວລອງໃໝ່'); return; }
+    const { title, headerHtml, bodyHtml } = buildQuoteDocumentParts(record);
+    const pdf = await buildPdfDocFromHtml(headerHtml, bodyHtml);
+    if(!pdf){ showToast('ສ້າງໄຟລ໌ PDF ບໍ່ສຳເລັດ'); return; }
+    const base = (title || 'ເອກະສານ').replace(/[\\/:*?"<>|]/g, '').trim() || 'ເອກະສານ';
+    const numPart = record.docNumber ? ('-' + record.docNumber) : '';
+    pdf.save(base + numPart + '.pdf');
+    showToast('ບັນທຶກໄຟລ໌ PDF ລົງເຄື່ອງສຳເລັດ');
+  }catch(e){
+    showToast('ສ້າງໄຟລ໌ PDF ບໍ່ສຳເລັດ, ລອງໃໝ່ອີກຄັ້ງ');
+  } finally {
+    if(btn) btn.disabled = false;
+  }
+}
+
+/* ---------- ເບິ່ງໃບສະເໜີລາຄາ (list of saved quotes/receipts, arc-btn-2) ---------- */
+function openQuoteListModal(focusId){
+  renderQuoteListModal(focusId || null);
+}
+function closeQuoteListModal(){ const root = document.getElementById('quote-list-root'); if(root) root.innerHTML = ''; }
+
+function deleteQuoteRecord(id){
+  if(!confirm('ຢືນຢັນລຶບເອກະສານນີ້?')) return;
+  savedQuotes = savedQuotes.filter(q => q.id !== id);
+  persistSavedQuotes();
+  scheduleAutoSync();
+  showToast('ລຶບແລ້ວ');
+  renderQuoteListModal();
+}
+
+function quoteRecordRowHtml(q){
+  const total = (q.items||[]).reduce((s,it)=> s + (Number(it.qty)||0) * (Number(it.price)||0), 0);
+  const typeLabel = q.docType === 'receipt' ? 'ໃບຮັບເງິນ' : 'ໃບສະເໜີລາຄາ';
+  const dateLabel = q.date ? new Date(q.date).toLocaleDateString('lo-LA') : '';
+  const unlocked = isQuoteUnlocked(q.id);
+  const lockTitle = unlocked ? 'ປົດລ໋ອກຢູ່ (ແກ້ໄຂໄດ້) — ແຕະ 2 ຄັ້ງເພື່ອລ໋ອກຄືນ' : 'ລ໋ອກຢູ່ (ແກ້ໄຂບໍ່ໄດ້) — ແຕະ 2 ຄັ້ງເພື່ອປົດລ໋ອກ';
+  return `
+    <div class="quote-record-row" data-id="${q.id}" style="background:#fff; border:1px solid var(--dark-10); border-radius:12px; padding:12px; margin-bottom:8px;">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:6px;">
+        <div style="min-width:0;">
+          <div style="font-weight:700; font-size:14px;">ເລກທີ ${esc(q.docNumber)}</div>
+          <div style="font-size:12px; color:var(--dark-50);">${typeLabel} • ${esc(dateLabel)}</div>
+        </div>
+        <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
+          <div style="font-weight:700; font-size:14px; white-space:nowrap;">${total.toLocaleString()} ກີບ</div>
+          <button type="button" class="q-record-lock" data-id="${q.id}" title="${lockTitle}" style="width:30px; height:30px; border:none; background:${unlocked ? 'rgba(76,122,94,.12)' : 'var(--dark-5)'}; border-radius:8px; padding:0; display:flex; align-items:center; justify-content:center; color:${unlocked ? 'var(--success, #4C7A5E)' : 'var(--danger)'}; cursor:pointer;">${unlocked ? ICONS.lockOpen : ICONS.lockClosed}</button>
+        </div>
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+        <button type="button" class="img-btn q-record-edit" data-id="${q.id}" style="flex:1; min-width:90px;">${ICONS.edit || ''} ແກ້ໄຂ</button>
+        <button type="button" class="img-btn q-record-view" data-id="${q.id}" style="flex:1; min-width:90px;">${ICONS.file || ''} ເບິ່ງ</button>
+        <button type="button" class="q-record-pdf" data-id="${q.id}" title="ບັນທຶກເປັນ PDF ລົງເຄື່ອງ" style="flex-shrink:0; width:38px; height:38px; border:none; background:var(--dark-5); border-radius:10px; display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0;"><img src="${PDF_ICON}" alt="PDF" style="width:22px; height:22px; object-fit:contain;"></button>
+        <button type="button" class="q-record-delete" data-id="${q.id}" title="ລຶບ" style="flex-shrink:0; width:38px; height:38px; border:none; background:var(--dark-5); border-radius:10px; display:flex; align-items:center; justify-content:center; color:var(--danger); cursor:pointer; padding:0;">${ICONS.x}</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderQuoteListModal(focusId){
+  const root = document.getElementById('quote-list-root');
+  if(!root) return;
+  const sorted = [...savedQuotes].sort((a,b)=> new Date(b.updatedAt||b.createdAt) - new Date(a.updatedAt||a.createdAt));
+
+  root.innerHTML = `
+    <div class="overlay" id="quote-list-overlay">
+      <div class="modal" id="quote-list-modal">
+        <div class="modal-head">
+          <h2>ເບິ່ງໃບສະເໜີລາຄາ</h2>
+          <button class="icon-x" id="quote-list-close">${ICONS.x}</button>
+        </div>
+        <div id="quote-list-rows">
+          ${sorted.length ? sorted.map(quoteRecordRowHtml).join('') : `<div style="text-align:center; color:var(--dark-40); padding:24px 0;">ຍັງບໍ່ມີເອກະສານທີ່ບັນທຶກໄວ້</div>`}
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById('quote-list-overlay').addEventListener('click', e=>{ if(e.target.id==='quote-list-overlay') closeQuoteListModal(); });
+  document.getElementById('quote-list-close').addEventListener('click', closeQuoteListModal);
+  document.querySelectorAll('.q-record-view').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const rec = savedQuotes.find(q => q.id === btn.dataset.id);
+      if(rec) openQuotePdfFromRecord(rec);
+    });
+  });
+  document.querySelectorAll('.q-record-edit').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const rec = savedQuotes.find(q => q.id === btn.dataset.id);
+      if(!rec) return;
+      if(!isQuoteUnlocked(rec.id)){
+        showToast('ເອກະສານນີ້ຖືກລ໋ອກຢູ່ — ແຕະໜ່ວຍກຸນແຈ 2 ຄັ້ງເພື່ອປົດລ໋ອກກ່ອນຈິ່ງແກ້ໄຂໄດ້');
+        return;
+      }
+      closeQuoteListModal();
+      openQuoteModal(rec);
+    });
+  });
+  document.querySelectorAll('.q-record-lock').forEach(btn=>{
+    btn.addEventListener('click', ()=> handleQuoteLockTap(btn.dataset.id));
+  });
+  document.querySelectorAll('.q-record-delete').forEach(btn=>{
+    btn.addEventListener('click', ()=> deleteQuoteRecord(btn.dataset.id));
+  });
+  document.querySelectorAll('.q-record-pdf').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const rec = savedQuotes.find(q => q.id === btn.dataset.id);
+      if(rec) downloadQuotePdfDirect(rec, btn);
+    });
+  });
+
+  if(focusId){
+    const rowEl = root.querySelector(`.quote-record-row[data-id="${focusId}"]`);
+    if(rowEl) rowEl.scrollIntoView({ block:'center', behavior:'smooth' });
+  }
+}
 
 /* ---------- PDF EXPORT (print) ---------- */
 function printReport(kind){
@@ -4060,7 +4681,7 @@ async function syncToDrive(silent){
     if(!ok && !silent){ ok = await connectDrive(''); }
     if(!ok){ if(!silent) showToast('ຍັງບໍ່ໄດ້ເຊື່ອມຕໍ່ Google Drive, ກະລຸນາລອງໃໝ່'); return; }
     let fileId = await findDriveFileId();
-    const payload = JSON.stringify({ app:'khang-sinkha', version:2, exportedAt:new Date().toISOString(), products, logo:logoImg, cover:coverImg, categories:CATEGORIES, customerOrders, purchaseOrders, scanLog });
+    const payload = JSON.stringify({ app:'khang-sinkha', version:2, exportedAt:new Date().toISOString(), products, logo:logoImg, cover:coverImg, categories:CATEGORIES, customerOrders, purchaseOrders, scanLog, quotes:savedQuotes });
     if(!fileId){
       const metadata = { name: DRIVE_FILE_NAME, mimeType: 'application/json' };
       const boundary = '-------khangsinkha' + Date.now();
@@ -4108,7 +4729,8 @@ async function syncFromDrive(){
       categories: Array.isArray(parsed) ? null : (Array.isArray(parsed.categories) ? parsed.categories : null),
       customerOrders: Array.isArray(parsed) ? null : (Array.isArray(parsed.customerOrders) ? parsed.customerOrders : null),
       purchaseOrders: Array.isArray(parsed) ? null : (Array.isArray(parsed.purchaseOrders) ? parsed.purchaseOrders : null),
-      scanLog: Array.isArray(parsed) ? null : (Array.isArray(parsed.scanLog) ? parsed.scanLog : null)
+      scanLog: Array.isArray(parsed) ? null : (Array.isArray(parsed.scanLog) ? parsed.scanLog : null),
+      quotes: Array.isArray(parsed) ? null : (Array.isArray(parsed.quotes) ? parsed.quotes : null)
     };
     renderImportConfirm();
   } catch(e){
@@ -4510,7 +5132,7 @@ function renderBackupModal(){
 }
 
 function exportData(){
-  const payload = { app:'khang-sinkha', version:2, exportedAt:new Date().toISOString(), products, logo:logoImg, cover:coverImg, categories:CATEGORIES, customerOrders, purchaseOrders, scanLog };
+  const payload = { app:'khang-sinkha', version:2, exportedAt:new Date().toISOString(), products, logo:logoImg, cover:coverImg, categories:CATEGORIES, customerOrders, purchaseOrders, scanLog, quotes:savedQuotes };
   const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -4541,7 +5163,8 @@ function handleImportFile(e){
         categories: Array.isArray(parsed) ? null : (Array.isArray(parsed.categories) ? parsed.categories : null),
         customerOrders: Array.isArray(parsed) ? null : (Array.isArray(parsed.customerOrders) ? parsed.customerOrders : null),
         purchaseOrders: Array.isArray(parsed) ? null : (Array.isArray(parsed.purchaseOrders) ? parsed.purchaseOrders : null),
-        scanLog: Array.isArray(parsed) ? null : (Array.isArray(parsed.scanLog) ? parsed.scanLog : null)
+        scanLog: Array.isArray(parsed) ? null : (Array.isArray(parsed.scanLog) ? parsed.scanLog : null),
+        quotes: Array.isArray(parsed) ? null : (Array.isArray(parsed.quotes) ? parsed.quotes : null)
       };
       renderImportConfirm();
     }catch(err){
@@ -4560,6 +5183,7 @@ function renderImportConfirm(){
   if(Array.isArray(pendingImportData.customerOrders)) extraParts.push('ບິນສັ່ງຊື້ລູກຄ້າ ' + pendingImportData.customerOrders.length + ' ລາຍການ');
   if(Array.isArray(pendingImportData.purchaseOrders)) extraParts.push('ລາຍການຈັດຊື້ ' + pendingImportData.purchaseOrders.length + ' ລາຍການ');
   if(Array.isArray(pendingImportData.scanLog)) extraParts.push('ປະຫວັດສະແກນ ' + pendingImportData.scanLog.length + ' ລາຍການ');
+  if(Array.isArray(pendingImportData.quotes)) extraParts.push('ໃບສະເໜີລາຄາ/ໃບຮັບເງິນ ' + pendingImportData.quotes.length + ' ລາຍການ');
   const extraNote = extraParts.length ? (', ' + extraParts.join(', ')) : '';
   root.innerHTML = `
     <div class="overlay center" id="import-overlay">
@@ -4595,6 +5219,7 @@ function renderImportConfirm(){
     if(Array.isArray(pendingImportData.customerOrders)){ customerOrders = pendingImportData.customerOrders; localStorage.setItem(CUSTOMER_ORDERS_KEY, JSON.stringify(customerOrders)); }
     if(Array.isArray(pendingImportData.purchaseOrders)){ purchaseOrders = pendingImportData.purchaseOrders; localStorage.setItem(PURCHASE_ORDERS_KEY, JSON.stringify(purchaseOrders)); }
     if(Array.isArray(pendingImportData.scanLog)){ scanLog = pendingImportData.scanLog; localStorage.setItem(SCANLOG_KEY, JSON.stringify(scanLog)); }
+    if(Array.isArray(pendingImportData.quotes)){ savedQuotes = pendingImportData.quotes; persistSavedQuotes(); }
     save();
     pendingImportData = null;
     root.innerHTML = '';
@@ -4817,14 +5442,14 @@ document.getElementById('arc-btn-4').addEventListener('click', ()=>{ closeHomeFa
 document.getElementById('arc-btn-5').innerHTML = ICONS.dataManage;
 document.getElementById('arc-btn-5').addEventListener('click', ()=>{ closeHomeFabMenu(); showToast('ຄຸນສົມບັດໃໝ່ — ກຳລັງພັດທະນາ, ຈະມາໄວໆນີ້'); });
 document.getElementById('report-fab-backdrop').addEventListener('click', closeReportFabMenu);
-document.getElementById('report-arc-btn-1').innerHTML = `<img src="${ICON_QUOTE_VIEW}" alt="ເບິ່ງໃບສະເໜີລາຄາ">`;
-document.getElementById('report-arc-btn-1').addEventListener('click', ()=>{ closeReportFabMenu(); showToast('ເບິ່ງໃບສະເໜີລາຄາ — ກຳລັງພັດທະນາ, ຈະມາໄວໆນີ້'); });
-document.getElementById('report-arc-btn-2').innerHTML = `<img src="${ICON_BARCODE_PRINT}" alt="ພິມເລກ Barcode">`;
-document.getElementById('report-arc-btn-2').addEventListener('click', ()=>{ closeReportFabMenu(); showToast('ພິມເລກ Barcode — ກຳລັງພັດທະນາ, ຈະມາໄວໆນີ້'); });
-document.getElementById('report-arc-btn-3').innerHTML = `<img src="${ICON_BARCODE_ADD}" alt="ສ້າງເລກ Barcode">`;
-document.getElementById('report-arc-btn-3').addEventListener('click', ()=>{ closeReportFabMenu(); showToast('ສ້າງເລກ Barcode — ກຳລັງພັດທະນາ, ຈະມາໄວໆນີ້'); });
-document.getElementById('report-arc-btn-4').innerHTML = `<img src="${ICON_QUOTE_PRINT}" alt="ອອກໃບສະເໜີລາຄາ/ໃບຮັບເງິນ">`;
-document.getElementById('report-arc-btn-4').addEventListener('click', ()=>{ closeReportFabMenu(); showToast('ອອກໃບສະເໜີລາຄາ/ໃບຮັບເງິນ — ກຳລັງພັດທະນາ, ຈະມາໄວໆນີ້'); });
+document.getElementById('report-arc-btn-1').innerHTML = `<img src="${ICON_QUOTE_VIEW}" alt="ອອກໃບສະເໜີລາຄາ">`;
+document.getElementById('report-arc-btn-1').addEventListener('click', ()=>{ closeReportFabMenu(); openQuoteModal(); });
+document.getElementById('report-arc-btn-2').innerHTML = `<img src="${ICON_BARCODE_PRINT}" alt="ເບິ່ງໃບສະເໜີລາຄາ">`;
+document.getElementById('report-arc-btn-2').addEventListener('click', ()=>{ closeReportFabMenu(); openQuoteListModal(); });
+document.getElementById('report-arc-btn-3').innerHTML = `<img src="${ICON_BARCODE_ADD}" alt="ສ້າງ Barcode">`;
+document.getElementById('report-arc-btn-3').addEventListener('click', ()=>{ closeReportFabMenu(); showToast('ສ້າງ Barcode — ກຳລັງພັດທະນາ, ຈະມາໄວໆນີ້'); });
+document.getElementById('report-arc-btn-4').innerHTML = `<img src="${ICON_QUOTE_PRINT}" alt="ພິມເລກ Barcode">`;
+document.getElementById('report-arc-btn-4').addEventListener('click', ()=>{ closeReportFabMenu(); showToast('ພິມເລກ Barcode — ກຳລັງພັດທະນາ, ຈະມາໄວໆນີ້'); });
 document.getElementById('report-arc-btn-5').innerHTML = `<img src="${ICON_BRANCH_ADD}" alt="ເພີ່ມສາຂາຂົນສົ່ງ">`;
 document.getElementById('report-arc-btn-5').addEventListener('click', ()=>{ closeReportFabMenu(); showToast('ເພີ່ມສາຂາຂົນສົ່ງ — ກຳລັງພັດທະນາ, ຈະມາໄວໆນີ້'); });
 document.getElementById('fab-cat-add').addEventListener('click', ()=>{
