@@ -3076,12 +3076,25 @@ function pdfPreviewFileName(){
 }
 
 async function buildPdfDocument(){
-  const stack = document.getElementById('pdf-pages-stack');
-  const pages = Array.from(document.querySelectorAll('#pdf-pages-stack .pdf-page'));
-  if(!stack || !pages.length) return null;
-  const prevTransform = stack.style.transform;
-  stack.style.transform = 'none';
+  const liveStack = document.getElementById('pdf-pages-stack');
+  if(!liveStack) return null;
+  // Render from an off-screen CLONE, never touching the live, on-screen stack.
+  // This used to reset the VISIBLE stack's transform to 'none' to capture
+  // true-to-scale canvases, which made the open popup visibly flash to full,
+  // unscaled, off-center A4 size for the whole rasterization duration — very
+  // noticeable now that this runs automatically in the background the instant
+  // the popup opens (prepareBackgroundPdf). Cloning keeps the visible page
+  // untouched throughout, however long html2canvas takes.
+  const clone = liveStack.cloneNode(true);
+  clone.id = 'pdf-pages-stack-clone';
+  clone.style.position = 'fixed';
+  clone.style.left = '-99999px';
+  clone.style.top = '0';
+  clone.style.transform = 'none';
+  document.body.appendChild(clone);
   try{
+    const pages = Array.from(clone.querySelectorAll('.pdf-page'));
+    if(!pages.length) return null;
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF({ unit:'mm', format:'a4', orientation:'portrait' });
     for(let i=0;i<pages.length;i++){
@@ -3092,8 +3105,7 @@ async function buildPdfDocument(){
     }
     return pdf;
   } finally {
-    stack.style.transform = prevTransform;
-    fitPdfPreviewScale();
+    document.body.removeChild(clone);
   }
 }
 
