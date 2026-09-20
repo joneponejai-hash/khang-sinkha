@@ -4212,7 +4212,15 @@ function stopFirebaseListener(){
 
 function applyRemoteFirebaseData(data){
   if(!data) return;
-  if(Array.isArray(data.products)){ products = data.products; try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(products)); }catch(e){} }
+  if(Array.isArray(data.products)){
+    // Realtime Sync payloads never carry product photos (see buildFirebasePayload),
+    // so merge incoming products onto whatever photo THIS device already has for
+    // that product id, instead of wiping it out.
+    const localImageById = {};
+    products.forEach(p => { if(p && p.image) localImageById[p.id] = p.image; });
+    products = data.products.map(p => ({ ...p, image: p.image || localImageById[p.id] || null }));
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(products)); }catch(e){}
+  }
   if(Array.isArray(data.categories)){ CATEGORIES = data.categories; try{ localStorage.setItem(CATEGORIES_KEY, JSON.stringify(CATEGORIES)); }catch(e){} }
   if(Array.isArray(data.customerOrders)){ customerOrders = data.customerOrders; try{ localStorage.setItem(CUSTOMER_ORDERS_KEY, JSON.stringify(customerOrders)); }catch(e){} }
   if(Array.isArray(data.purchaseOrders)){ purchaseOrders = data.purchaseOrders; try{ localStorage.setItem(PURCHASE_ORDERS_KEY, JSON.stringify(purchaseOrders)); }catch(e){} }
@@ -4239,15 +4247,32 @@ function showRealtimeSyncPulse(){
   showRealtimeSyncPulse._t = setTimeout(()=>{ el.style.opacity = '0'; }, 1800);
 }
 
+function buildFirebasePayload(){
+  // Firestore caps a single document at ~1 MiB. Product photos (base64 images)
+  // are exactly the kind of data that blows past that on a real shop's catalog,
+  // so Realtime Sync deliberately leaves photos and store branding (logo/cover)
+  // out of the live payload — those still travel via Google Drive backup/restore
+  // (or an app update) since they change rarely. Everything that actually needs
+  // to be instant (stock counts, orders, categories, scan log) has no images.
+  const lightProducts = products.map(p => {
+    const { image, ...rest } = p;
+    return rest;
+  });
+  return {
+    products: lightProducts, categories:CATEGORIES, customerOrders, purchaseOrders, scanLog,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+}
+
 async function pushToFirebase(){
   try{
     const ok = await initFirebaseIfEnabled();
     if(!ok || !firestoreDb) return { ok:false, reason:'not-configured' };
-    const payload = {
-      products, categories:CATEGORIES, customerOrders, purchaseOrders, scanLog,
-      logo:logoImg, cover:coverImg,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    };
+    const payload = buildFirebasePayload();
+    const approxBytes = JSON.stringify(payload).length;
+    if(approxBytes > 900000){
+      return { ok:false, reason:'too-large' };
+    }
     await firebaseDocRef().set(payload, { merge:false });
     return { ok:true };
   } catch(e){
@@ -4301,8 +4326,10 @@ async function enableFirebaseSync(configText){
       showToast('ບໍ່ມີສິດຂຽນຂໍ້ມູນ — ກວດວ່າໄດ້ສ້າງ Firestore Database ໃນ Firebase Console ແລ້ວ ແລະ ຢູ່ໂໝດ test mode');
     } else if(result.reason === 'not-configured'){
       showToast('ໂຫຼດ Firebase SDK ບໍ່ສຳເລັດ, ກວດອິນເຕີເນັດແລ້ວລອງໃໝ່');
+    } else if(result.reason === 'too-large' || result.reason === 'invalid-argument'){
+      showToast('ຂໍ້ມູນສິນຄ້າຫຼາຍ/ໃຫຍ່ເກີນຂີດຈຳກັດຂອງ Firestore (1MB ຕໍ່ເອກະສານ), ຂ້ອຍໄດ້ຕັດຮູບພາບອອກຈາກ Realtime Sync ແລ້ວແຕ່ຍັງໃຫຍ່ເກີນໄປ, ຕິດຕໍ່ຂ້ອຍໃຫ້ຊ່ວຍປັບໂຄງສ້າງເພີ່ມ');
     } else {
-      showToast('Sync ຂຶ້ນ Firebase ບໍ່ສຳເລັດ, ກວດ Firestore Database ໃນ Console ວ່າສ້າງແລ້ວ');
+      showToast('Sync ຂຶ້ນ Firebase ບໍ່ສຳເລັດ (' + esc(result.reason || result.message || '') + ')');
     }
     return false;
   }
