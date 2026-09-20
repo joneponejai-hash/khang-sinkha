@@ -3942,17 +3942,29 @@ async function driveRequest(url, options){
 }
 
 async function findDriveFileId(){
-  let fileId = localStorage.getItem(GDRIVE_FILE_ID_KEY);
-  if(fileId) return fileId;
-  const q = encodeURIComponent(`name='${DRIVE_FILE_NAME}' and trashed=false`);
-  const res = await driveRequest(`https://www.googleapis.com/drive/v3/files?q=${q}&spaces=drive&fields=files(id,name,modifiedTime)`);
-  const data = await res.json();
-  if(data.files && data.files.length){
-    fileId = data.files[0].id;
-    localStorage.setItem(GDRIVE_FILE_ID_KEY, fileId);
-    return fileId;
+  // Always re-query Drive by name instead of trusting a locally-cached id forever.
+  // Reason: if more than one device ever created its own backup file with the same
+  // name (e.g. an old bug, or two devices both connecting before any backup existed),
+  // each device could get permanently pinned to a DIFFERENT file id, so pushes from
+  // one device would silently never reach the file the other device reads from.
+  // Always picking the most-recently-modified matching file lets every device
+  // self-heal onto the same, current file the next time it syncs.
+  try{
+    const q = encodeURIComponent(`name='${DRIVE_FILE_NAME}' and trashed=false`);
+    const res = await driveRequest(`https://www.googleapis.com/drive/v3/files?q=${q}&spaces=drive&fields=files(id,name,modifiedTime)&orderBy=modifiedTime desc`);
+    const data = await res.json();
+    if(data.files && data.files.length){
+      const fileId = data.files[0].id;
+      localStorage.setItem(GDRIVE_FILE_ID_KEY, fileId);
+      return fileId;
+    }
+    localStorage.removeItem(GDRIVE_FILE_ID_KEY);
+    return null;
+  } catch(e){
+    // Network hiccup etc: fall back to whatever id we cached before, rather than
+    // failing the whole sync outright.
+    return localStorage.getItem(GDRIVE_FILE_ID_KEY) || null;
   }
-  return null;
 }
 
 async function findOrCreateSheet(){
