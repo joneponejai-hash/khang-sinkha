@@ -425,13 +425,27 @@
   /* ---------- PDF PREVIEW POPUP (A4 preview before export) ---------- */
   .pdf-preview-overlay{ position:fixed; inset:0; background:rgba(15,22,26,.72); z-index:80; display:flex; flex-direction:column; }
   .pdf-preview-topbar{ flex-shrink:0; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 16px; padding-top:calc(12px + env(safe-area-inset-top)); background:#1C2B33; color:#fff; box-shadow:0 2px 10px rgba(0,0,0,.3);}
-  .pdf-preview-topbar h3{ margin:0; font-size:14px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .pdf-preview-topbar h3{ margin:0; font-size:14px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; min-width:0; }
+  .pdf-preview-actions{ display:flex; align-items:center; gap:8px; flex-shrink:0; }
   .pdf-preview-close-btn{ flex-shrink:0; background:rgba(255,255,255,.15); border:none; color:#fff; width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; }
   .pdf-preview-close-btn svg{ width:16px; height:16px; }
+  .pdf-preview-icon-btn{ flex-shrink:0; width:32px; height:32px; border-radius:50%; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0; }
+  .pdf-preview-icon-btn:disabled{ opacity:.5; cursor:default; }
+  .pdf-preview-download-btn{ background:#fff; color:#E4483A; }
+  .pdf-preview-download-btn svg{ width:17px; height:17px; }
+  .pdf-preview-share-btn{ background:transparent; }
+  .pdf-preview-share-btn img{ width:32px; height:32px; border-radius:50%; display:block; pointer-events:none; }
   .pdf-preview-scroll{ flex:1; overflow-y:auto; overflow-x:hidden; padding:18px 12px 40px; -webkit-overflow-scrolling:touch; }
   .pdf-preview-sizer{ position:relative; margin:0 auto; }
-  .pdf-page{ position:absolute; top:0; left:50%; width:210mm; min-height:297mm; box-sizing:border-box; background:#fff; padding:14mm 12mm; box-shadow:0 6px 28px rgba(0,0,0,.45); transform-origin:top center; color:#1C2B33; }
+  .pdf-pages-stack{ position:absolute; top:0; left:50%; display:flex; flex-direction:column; align-items:center; gap:20px; transform-origin:top center; }
+  .pdf-page{ position:relative; width:210mm; min-height:297mm; box-sizing:border-box; background:#fff; padding:14mm 12mm; box-shadow:0 6px 28px rgba(0,0,0,.45); color:#1C2B33; font-size:12px; }
   .pdf-page .print-header{ margin-bottom:16px; }
+  .pdf-page .print-header h1{ font-size:14px; }
+  .pdf-page .print-summary b{ font-size:14px; }
+  .pdf-page .print-summary span{ font-size:12px; }
+  .pdf-page .print-table td, .pdf-page .print-table th{ word-break:break-word; overflow-wrap:break-word; }
+  .pdf-page-footer{ position:absolute; bottom:8mm; right:12mm; font-size:10px; color:#999; }
+  .pdf-measure-stage{ position:fixed !important; left:-99999px !important; top:0 !important; visibility:hidden !important; box-shadow:none !important; overflow:visible !important; min-height:0 !important; }
   @media print{
     body *{ visibility:hidden; }
     #print-area, #print-area *{ visibility:visible; }
@@ -1290,7 +1304,7 @@ function renderOrdersTab(){
       const hasDiscount = getOrderDiscountPerUnit(realQty) > 0;
       return `
       <div class="report-card" style="margin-bottom:12px; padding:0; overflow:hidden;">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; background:#C99563; padding:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; background:#DBB994; padding:16px;">
           <div style="min-width:0;">
             <p style="font-weight:700; font-size:15px; margin:0; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
               <span>${esc(o.customerName)}</span>
@@ -1298,7 +1312,7 @@ function renderOrdersTab(){
               ${carrierLogoHtml(o.shippingCarrier)}
             </p>
             <p class="muted" style="margin:2px 0 0; color:var(--dark);">${esc(o.phone)}</p>
-            ${(o.shippingCarrier || o.shippingBranch) ? `<p class="muted" style="margin:2px 0 0;">${esc(o.shippingCarrier || '')}${o.shippingCarrier && o.shippingBranch ? ' - ' : ''}${esc(o.shippingBranch || '')}</p>` : ''}
+            ${(o.shippingCarrier || o.shippingBranch) ? `<p style="margin:2px 0 0; font-size:11px; font-weight:600; color:var(--dark);">${esc(o.shippingCarrier || '')}${o.shippingCarrier && o.shippingBranch ? ' - ' : ''}${esc(o.shippingBranch || '')}</p>` : ''}
           </div>
           <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px; flex-shrink:0;">
             <div style="display:flex; align-items:center; gap:10px;">
@@ -2876,30 +2890,121 @@ function renderReport(){
   });
 }
 
-/* ---------- PDF PREVIEW POPUP ---------- */
+/* ---------- PDF PREVIEW POPUP (ຫຼາຍໜ້າ A4 ອັດຕະໂນມັດ) ---------- */
 let pdfPreviewResizeHandler = null;
+
+function mmToPx(mm){
+  const div = document.createElement('div');
+  div.style.cssText = `position:fixed; left:-99999px; top:0; visibility:hidden; height:${mm}mm; width:0; margin:0; padding:0; border:0;`;
+  document.body.appendChild(div);
+  const px = div.offsetHeight;
+  document.body.removeChild(div);
+  return px || (mm * 3.7795);
+}
+
+/* ແບ່ງ header/summary/table ອອກເປັນຫຼາຍໜ້າ A4 ຖ້າຕາຕະລາງຍາວເກີນໄປ (ຫົວຕາຕະລາງຈະຖືກຊ້ຳຢູ່ທຸກໜ້າ) */
+function buildPaginatedPdfPages(headerHtml, bodyHtml){
+  const wrap = document.createElement('div');
+  wrap.innerHTML = bodyHtml;
+  const summaryEl = wrap.querySelector('.print-summary');
+  const tableEl = wrap.querySelector('.print-table');
+  if(!tableEl){
+    return [ headerHtml + bodyHtml ];
+  }
+  const theadEl = tableEl.querySelector('thead');
+  const tbodyEl = tableEl.querySelector('tbody');
+  const rows = tbodyEl ? Array.from(tbodyEl.children) : [];
+  const theadHtml = theadEl ? theadEl.outerHTML : '';
+  const summaryHtmlStr = summaryEl ? summaryEl.outerHTML : '';
+
+  if(rows.length <= 1){
+    return [ headerHtml + summaryHtmlStr + `<table class="print-table">${theadHtml}<tbody>${rows.map(r=>r.outerHTML).join('')}</tbody></table>` ];
+  }
+
+  const stage = document.createElement('div');
+  stage.className = 'pdf-page pdf-measure-stage';
+  document.body.appendChild(stage);
+
+  const usableHeightPx = mmToPx(297) - mmToPx(14) * 2;
+
+  stage.innerHTML = headerHtml;
+  const headerHeightPx = stage.offsetHeight;
+
+  stage.innerHTML = summaryHtmlStr;
+  const summaryHeightPx = summaryEl ? stage.offsetHeight : 0;
+
+  stage.innerHTML = `<table class="print-table">${theadHtml}<tbody>${rows.map(r=>r.outerHTML).join('')}</tbody></table>`;
+  const theadHeightPx = stage.querySelector('thead') ? stage.querySelector('thead').offsetHeight : 0;
+  const rowHeights = Array.from(stage.querySelectorAll('tbody tr')).map(tr => tr.offsetHeight);
+
+  document.body.removeChild(stage);
+
+  const firstPageBudget = Math.max(usableHeightPx - headerHeightPx - summaryHeightPx - theadHeightPx, 60);
+  const contPageBudget = Math.max(usableHeightPx - theadHeightPx, 60);
+
+  const pageChunks = [];
+  let idx = 0;
+  let isFirst = true;
+  while(idx < rows.length){
+    const budget = isFirst ? firstPageBudget : contPageBudget;
+    const startIdx = idx;
+    let used = 0;
+    while(idx < rows.length){
+      const h = rowHeights[idx] || 0;
+      if(used > 0 && used + h > budget) break;
+      used += h;
+      idx++;
+      if(used > budget) break; /* ແຖວດຽວໃຫຍ່ກວ່າໜ້າ ກໍ່ໃຫ້ຢູ່ໜ້ານັ້ນຄົນດຽວ */
+    }
+    if(idx === startIdx) idx++; /* ກັນຄ້າງ loop */
+    pageChunks.push({ start:startIdx, end:idx });
+    isFirst = false;
+  }
+  if(pageChunks.length === 0) pageChunks.push({ start:0, end:rows.length });
+
+  const totalPages = pageChunks.length;
+  return pageChunks.map(({start,end}, i) => {
+    const rowsHtml = rows.slice(start,end).map(r=>r.outerHTML).join('');
+    const tableHtml = `<table class="print-table">${theadHtml}<tbody>${rowsHtml}</tbody></table>`;
+    const topBlock = i === 0 ? (headerHtml + summaryHtmlStr) : '';
+    const footer = totalPages > 1 ? `<div class="pdf-page-footer">ໜ້າ ${i+1}/${totalPages}</div>` : '';
+    return `${topBlock}${tableHtml}${footer}`;
+  });
+}
+
+let currentPdfPreviewTitle = '';
 function showPdfPreview(title, bodyHtml){
   const root = document.getElementById('pdf-preview-root');
   if(!root) return;
+  currentPdfPreviewTitle = title;
   const now = new Date().toLocaleString('lo-LA');
+  const headerHtml = `
+    <div class="print-header">
+      ${logoImg ? `<img src="${logoImg}" class="print-logo">` : ''}
+      <div>
+        <h1>ຄັງເສື້ອຜ້າ</h1>
+        <p>${esc(title)}</p>
+        <p class="print-date">ສ້າງເມື່ອ: ${esc(now)}</p>
+      </div>
+    </div>
+  `;
+  const pagesHtml = buildPaginatedPdfPages(headerHtml, bodyHtml)
+    .map(pageInner => `<div class="pdf-page">${pageInner}</div>`)
+    .join('');
   root.innerHTML = `
     <div class="pdf-preview-overlay" id="pdf-preview-overlay">
       <div class="pdf-preview-topbar">
         <h3>${esc(title)}</h3>
-        <button type="button" class="pdf-preview-close-btn" id="pdf-preview-close">${ICONS.x}</button>
+        <div class="pdf-preview-actions">
+          <button type="button" class="pdf-preview-icon-btn pdf-preview-download-btn" id="pdf-preview-download-btn" title="ບັນທຶກເປັນ PDF ລົງເຄື່ອງ">${ICONS.pdf}</button>
+          <button type="button" class="pdf-preview-icon-btn pdf-preview-share-btn" id="pdf-preview-share-btn" title="ແຊຣ໌ອອກໄປທາງນອກ"><img src="${MESSENGER_ICON}" alt="Share"></button>
+          <button type="button" class="pdf-preview-close-btn" id="pdf-preview-close">${ICONS.x}</button>
+        </div>
       </div>
       <div class="pdf-preview-scroll" id="pdf-preview-scroll">
         <div class="pdf-preview-sizer" id="pdf-preview-sizer">
-          <div class="pdf-page" id="pdf-preview-page">
-            <div class="print-header">
-              ${logoImg ? `<img src="${logoImg}" class="print-logo">` : ''}
-              <div>
-                <h1>ຄັງເສື້ອຜ້າ</h1>
-                <p>${esc(title)}</p>
-                <p class="print-date">ສ້າງເມື່ອ: ${esc(now)}</p>
-              </div>
-            </div>
-            ${bodyHtml}
+          <div class="pdf-pages-stack" id="pdf-pages-stack">
+            ${pagesHtml}
           </div>
         </div>
       </div>
@@ -2907,6 +3012,8 @@ function showPdfPreview(title, bodyHtml){
   `;
   document.getElementById('pdf-preview-close').addEventListener('click', closePdfPreview);
   document.getElementById('pdf-preview-overlay').addEventListener('click', e=>{ if(e.target.id === 'pdf-preview-overlay') closePdfPreview(); });
+  document.getElementById('pdf-preview-download-btn').addEventListener('click', downloadPdfPreview);
+  document.getElementById('pdf-preview-share-btn').addEventListener('click', sharePdfPreview);
   fitPdfPreviewScale();
   pdfPreviewResizeHandler = fitPdfPreviewScale;
   window.addEventListener('resize', pdfPreviewResizeHandler);
@@ -2915,14 +3022,14 @@ function showPdfPreview(title, bodyHtml){
 function fitPdfPreviewScale(){
   const scroll = document.getElementById('pdf-preview-scroll');
   const sizer = document.getElementById('pdf-preview-sizer');
-  const page = document.getElementById('pdf-preview-page');
-  if(!scroll || !sizer || !page) return;
-  page.style.transform = 'translateX(-50%) scale(1)';
-  const naturalWidth = page.offsetWidth;
-  const naturalHeight = page.offsetHeight;
+  const stack = document.getElementById('pdf-pages-stack');
+  if(!scroll || !sizer || !stack) return;
+  stack.style.transform = 'translateX(-50%) scale(1)';
+  const naturalWidth = stack.offsetWidth;
+  const naturalHeight = stack.offsetHeight;
   const availWidth = scroll.clientWidth;
   const scale = Math.min(1, availWidth / naturalWidth);
-  page.style.transform = `translateX(-50%) scale(${scale})`;
+  stack.style.transform = `translateX(-50%) scale(${scale})`;
   sizer.style.width = (naturalWidth * scale) + 'px';
   sizer.style.height = (naturalHeight * scale) + 'px';
 }
@@ -2931,6 +3038,98 @@ function closePdfPreview(){
   const root = document.getElementById('pdf-preview-root');
   if(root) root.innerHTML = '';
   if(pdfPreviewResizeHandler){ window.removeEventListener('resize', pdfPreviewResizeHandler); pdfPreviewResizeHandler = null; }
+}
+
+/* ---------- ບັນທຶກ / ແຊຣ໌ PDF ຈິງ (ໃຊ້ html2canvas + jsPDF, ໂຫຼດຄັ້ງທຳອິດຕອນກົດ) ---------- */
+function loadExternalScript(src){
+  return new Promise((resolve, reject)=>{
+    if(document.querySelector(`script[src="${src}"]`)){ resolve(); return; }
+    const s = document.createElement('script');
+    s.src = src;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error('load-failed'));
+    document.head.appendChild(s);
+  });
+}
+
+async function ensurePdfLibs(){
+  if(window.jspdf && window.html2canvas) return true;
+  try{
+    await loadExternalScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+    await loadExternalScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+    return !!(window.jspdf && window.html2canvas);
+  }catch(e){ return false; }
+}
+
+function pdfPreviewFileName(){
+  const base = (currentPdfPreviewTitle || 'ລາຍງານ').replace(/[\\/:*?"<>|]/g, '').trim() || 'ລາຍງານ';
+  return base + '.pdf';
+}
+
+async function buildPdfDocument(){
+  const stack = document.getElementById('pdf-pages-stack');
+  const pages = Array.from(document.querySelectorAll('#pdf-pages-stack .pdf-page'));
+  if(!stack || !pages.length) return null;
+  const prevTransform = stack.style.transform;
+  stack.style.transform = 'none';
+  try{
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ unit:'mm', format:'a4', orientation:'portrait' });
+    for(let i=0;i<pages.length;i++){
+      const canvas = await window.html2canvas(pages[i], { scale:2, backgroundColor:'#ffffff', useCORS:true });
+      const imgData = canvas.toDataURL('image/jpeg', 0.92);
+      if(i > 0) pdf.addPage();
+      pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+    }
+    return pdf;
+  } finally {
+    stack.style.transform = prevTransform;
+    fitPdfPreviewScale();
+  }
+}
+
+async function downloadPdfPreview(){
+  const btn = document.getElementById('pdf-preview-download-btn');
+  if(btn) btn.disabled = true;
+  showToast('ກຳລັງສ້າງໄຟລ໌ PDF...');
+  try{
+    const ok = await ensurePdfLibs();
+    if(!ok){ showToast('ບໍ່ສາມາດໂຫຼດຕົວສ້າງ PDF ໄດ້, ກະລຸນາເຊື່ອມຕໍ່ອິນເຕີເນັດແລ້ວລອງໃໝ່'); return; }
+    const pdf = await buildPdfDocument();
+    if(!pdf) return;
+    pdf.save(pdfPreviewFileName());
+    showToast('ບັນທຶກໄຟລ໌ PDF ລົງເຄື່ອງສຳເລັດ');
+  }catch(e){
+    showToast('ສ້າງໄຟລ໌ PDF ບໍ່ສຳເລັດ, ລອງໃໝ່ອີກຄັ້ງ');
+  } finally {
+    if(btn) btn.disabled = false;
+  }
+}
+
+async function sharePdfPreview(){
+  const btn = document.getElementById('pdf-preview-share-btn');
+  if(btn) btn.disabled = true;
+  showToast('ກຳລັງກຽມໄຟລ໌ສຳລັບແຊຣ໌...');
+  try{
+    const ok = await ensurePdfLibs();
+    if(!ok){ showToast('ບໍ່ສາມາດກຽມໄຟລ໌ໄດ້, ກະລຸນາເຊື່ອມຕໍ່ອິນເຕີເນັດແລ້ວລອງໃໝ່'); return; }
+    const pdf = await buildPdfDocument();
+    if(!pdf) return;
+    const fname = pdfPreviewFileName();
+    const blob = pdf.output('blob');
+    const file = new File([blob], fname, { type:'application/pdf' });
+    if(navigator.canShare && navigator.canShare({ files:[file] })){
+      await navigator.share({ files:[file], title: currentPdfPreviewTitle || 'ລາຍງານ' });
+    } else if(navigator.share){
+      showToast('ອຸປະກອນນີ້ບໍ່ຮອງຮັບການແຊຣ໌ໄຟລ໌ໂດຍກົງ, ກະລຸນາໃຊ້ປຸ່ມບັນທຶກ PDF ແລ້ວແຊຣ໌ຈາກໄຟລ໌ນັ້ນແທນ');
+    } else {
+      showToast('ອຸປະກອນ/ໂປຣແກຣມນີ້ບໍ່ຮອງຮັບການແຊຣ໌, ກະລຸນາໃຊ້ປຸ່ມບັນທຶກ PDF ແລ້ວແຊຣ໌ຈາກໄຟລ໌ນັ້ນແທນ');
+    }
+  }catch(e){
+    if(!(e && e.name === 'AbortError')) showToast('ແຊຣ໌ບໍ່ສຳເລັດ, ລອງໃໝ່ອີກຄັ້ງ');
+  } finally {
+    if(btn) btn.disabled = false;
+  }
 }
 
 /* ---------- PDF EXPORT (print) ---------- */
