@@ -3899,7 +3899,17 @@ function renderBackupModal(){
     localStorage.setItem(GDRIVE_CLIENT_ID_KEY, clientIdInput.value.trim());
     connectBtn.textContent = 'ກຳລັງເຊື່ອມຕໍ່...';
     const ok = await connectDrive('');
-    if(ok){ showToast('ເຊື່ອມຕໍ່ Google Drive ສຳເລັດ'); syncToDrive(true); }
+    if(ok){
+      showToast('ເຊື່ອມຕໍ່ Google Drive ສຳເລັດ');
+      /* ສຳຄັນ: ຢ່າທັບໄຟລ໌ໃນ Drive ດ້ວຍຂໍ້ມູນຫວ່າງໆຂອງເຄື່ອງໃໝ່ໂດຍບໍ່ຖາມ —
+         ຖ້າ Drive ມີໄຟລ໌ສຳຮອງເກົ່າຢູ່ແລ້ວ ໃຫ້ດຶງລົງມາ (ພ້ອມກ່ອງຢືນຢັນ) ແທນທີ່ຈະດັນຂອງເຄື່ອງນີ້ຂຶ້ນໄປທັບ.
+         ດັນຂຶ້ນອັດຕະໂນມັດສະເພາະຕອນ Drive ຍັງບໍ່ມີໄຟລ໌ສຳຮອງເລີຍ (ເຊື່ອມຕໍ່ຄັ້ງທຳອິດແທ້ໆ). */
+      try{
+        const existingFileId = await findDriveFileId();
+        if(existingFileId){ await syncFromDrive(); }
+        else{ await syncToDrive(true); }
+      }catch(e){ /* ຖ້າກວດບໍ່ໄດ້ ໃຫ້ຜູ້ໃຊ້ກົດ sync ດ້ວຍຕົນເອງ */ }
+    }
     else showToast('ເຊື່ອມຕໍ່ບໍ່ສຳເລັດ, ກວດ Client ID ອີກຄັ້ງ');
     renderBackupModal();
   });
