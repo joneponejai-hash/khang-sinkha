@@ -277,6 +277,7 @@
   .modal-head h2{font-size:16px; margin:0;}
   .icon-x{width:32px; height:32px; border-radius:10px; background:var(--dark-5); border:none; display:flex; align-items:center; justify-content:center; cursor:pointer;}
   .icon-x svg{width:16px; height:16px; color:var(--dark-60);}
+  #scanner-close svg{color:var(--accent);}
   .field{margin-bottom:12px;}
   .field label{font-size:12px; color:var(--dark-50); display:block; margin-bottom:4px;}
   .field input, .field select, .field textarea{width:100%; background:#fff; border:1px solid var(--dark-10); border-radius:12px; padding:10px 12px; font-size:14px; outline:none; font-family:inherit; box-sizing:border-box; resize:vertical;}
@@ -2423,8 +2424,43 @@ let scannerCooldown = false;
 let scannerMode = 'receive';
 let scannerNewCount = 0;
 
+/* ສຽງເຕືອນສຳລັບທຸກບ່ອນທີ່ໃຊ້ function ສະແກນ barcode (ທັງກ້ອງອັດຕະໂນມັດ ແລະ ພິມລະຫັດເອງ) —
+   ສ້າງສຽງ beep ຈາກ Web Audio API ໂດຍກົງ (ບໍ່ຕ້ອງໃຊ້ໄຟລ໌ສຽງພາຍນອກ, ໃຊ້ໄດ້ແບບ offline). */
+let scanAudioCtx = null;
+function ensureScanAudioCtx(){
+  try{
+    if(!scanAudioCtx) scanAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if(scanAudioCtx.state === 'suspended') scanAudioCtx.resume();
+  }catch(e){}
+  return scanAudioCtx;
+}
+function playScanBeep(freq, durationMs, waveType){
+  const ctx = ensureScanAudioCtx();
+  if(!ctx) return;
+  try{
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = waveType || 'sine';
+    osc.frequency.value = freq;
+    const now = ctx.currentTime;
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.28, now + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + durationMs/1000);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + durationMs/1000 + 0.02);
+  }catch(e){}
+}
+function playScanSuccessSound(){ playScanBeep(1500, 110, 'sine'); }
+function playScanErrorSound(){
+  playScanBeep(300, 130, 'square');
+  setTimeout(()=>playScanBeep(300, 130, 'square'), 160);
+}
+
 function openScanner(mode){
   scannerMode = mode || 'receive';
+  ensureScanAudioCtx(); // ປົດລ໋ອກສຽງໄວ້ແຕ່ຕອນນີ້ (ຖືກເປີດຈາກການແຕະປຸ່ມ, ນັບເປັນ user gesture)
   scannerNewCount = 0;
   renderScannerModal();
   startScanner();
@@ -2590,6 +2626,7 @@ function handleScanResult(rawCode){
   if(scannerMode === 'search'){
     stopScanner();
     if(navigator.vibrate) navigator.vibrate(120);
+    playScanSuccessSound();
     closeScanner();
     search = code;
     const si = document.getElementById('search-input');
@@ -2606,10 +2643,12 @@ function handleScanResult(rawCode){
     const product = products.find(p => (p.code||'').trim().toLowerCase() === norm && (p.code||'').trim() !== '');
     if(!product){
       if(navigator.vibrate) navigator.vibrate([80,60,80]);
+      playScanErrorSound();
       showToast('ບໍ່ມີສິນຄ້ານີ້ໃນລະບົບ');
       return;
     }
     if(navigator.vibrate) navigator.vibrate(120);
+    playScanSuccessSound();
     openQuickScanActionModal(product);
     return;
   }
@@ -2619,6 +2658,7 @@ function handleScanResult(rawCode){
   const isDup = isKnownBarcode(norm);
 
   if(navigator.vibrate) navigator.vibrate(isDup ? [80,60,80] : 120);
+  if(isDup) playScanErrorSound(); else playScanSuccessSound();
 
   if(isDup){
     showToast('ພັດສະດຸໄດ້ຮັບແລ້ວ');
