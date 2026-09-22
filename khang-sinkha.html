@@ -125,9 +125,12 @@
   .order-icon-btn{background:none; border:none; padding:2px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
   .order-icon-btn svg{width:20px; height:20px;}
   .icon-btn-sm svg{width:14px; height:14px; color:var(--danger);}
-  .detail-img{width:100%; aspect-ratio:1/1; max-height:260px; border-radius:16px; background:var(--dark-5); overflow:hidden; display:flex; align-items:center; justify-content:center; margin-bottom:12px;}
+  .detail-img{position:relative; width:100%; aspect-ratio:1/1; max-height:260px; border-radius:16px; background:var(--dark-5); overflow:hidden; display:flex; align-items:center; justify-content:center; margin-bottom:12px;}
   .detail-img img{width:100%; height:100%; object-fit:cover;}
   .detail-img svg{width:40px; height:40px; color:var(--dark-15);}
+  .detail-lock-btn{position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:64px; height:64px; border-radius:50%; background:rgba(28,43,51,.6); border:none; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 4px 16px rgba(0,0,0,.3); z-index:2;}
+  .detail-lock-btn svg{width:30px; height:30px; color:#fff;}
+  .detail-lock-btn.unlocked{background:rgba(76,122,94,.75);}
   .empty{text-align:center; padding:60px 0;}
   .empty svg{width:36px; height:36px; color:var(--dark-15); margin-bottom:8px;}
   .empty p{font-size:13px; color:var(--dark-50); margin:0;}
@@ -177,6 +180,12 @@
   .row-actions button svg{width:12px; height:12px;}
   .btn-edit{background:var(--dark); color:#fff;}
   .btn-del{background:var(--danger); color:#fff;}
+  .btn-del.locked{background:var(--dark-15); color:var(--dark-40); cursor:not-allowed;}
+  .list-lock-btn{display:flex; align-items:center; gap:8px; width:100%; margin-top:10px; padding:8px 10px; border-radius:10px; border:none; background:var(--dark-5); color:var(--dark-50); font-size:11px; font-weight:600; font-family:inherit; cursor:pointer; text-align:left;}
+  .list-lock-btn.unlocked{background:rgba(76,122,94,.12); color:var(--success);}
+  .list-lock-icon{width:20px; height:20px; border-radius:50%; background:var(--dark-15); display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+  .list-lock-icon svg{width:11px; height:11px; color:#fff;}
+  .list-lock-btn.unlocked .list-lock-icon{background:var(--success);}
   .report-card{background:#fff; border-radius:16px; border:1px solid var(--dark-8); padding:16px; margin-bottom:12px; overflow:hidden;}
   .report-label{font-size:12px; color:var(--dark-50); margin:0 0 4px;}
   .report-value{font-size:24px; font-weight:700; font-family:monospace; margin:0;}
@@ -1695,12 +1704,17 @@ function variantRowsHtml(p){
 }
 
 function expandHtml(p){
+  const unlocked = isDetailDeleteUnlocked(p.id);
   return `
     <div class="expand-panel">
       ${variantRowsHtml(p)}
+      <button type="button" class="list-lock-btn ${unlocked?'unlocked':''}" data-action="toggle-product-lock" data-id="${p.id}">
+        <span class="list-lock-icon">${unlocked?ICONS.lockOpen:ICONS.lockClosed}</span>
+        <span>${unlocked?'ປົດລ໋ອກແລ້ວ (ແຕະ 2 ຄັ້ງເພື່ອລ໋ອກຄືນ)':'ລ໋ອກຢູ່ — ແຕະ 2 ຄັ້ງເພື່ອປົດລ໋ອກ'}</span>
+      </button>
       <div class="row-actions">
         <button class="btn-edit" data-action="open-edit" data-id="${p.id}">${ICONS.pencil} ແກ້ໄຂ</button>
-        <button class="btn-del" data-action="confirm-delete" data-id="${p.id}">${ICONS.trash} ລຶບ</button>
+        <button class="btn-del ${unlocked?'':'locked'}" data-action="confirm-delete" data-id="${p.id}">${ICONS.trash} ລຶບ</button>
       </div>
     </div>
   `;
@@ -2329,14 +2343,34 @@ function confirmPartialReceive(){
 }
 
 /* ---------- PRODUCT DETAIL SHEET (grid view tap) ---------- */
-function openDetail(id){ detailId = id; renderDetailSheet(); }
-function closeDetail(){ detailId = null; document.getElementById('detail-root').innerHTML=''; }
+/* ລ໋ອກປຸ່ມ "ລຶບ" ສິນຄ້າ ເພື່ອປ້ອງກັນການລຶບຂໍ້ມູນໂດຍບັງເອີນ — ໃຊ້ຮ່ວມກັນທັງໜ້າລາຍລະອຽດສິນຄ້າ (detail sheet, ຮູບກຸນແຈຢູ່ກາງຮູບສິນຄ້າ)
+   ແລະ ແຖວລາຍການໃນ list view (ຮູບກຸນແຈເປັນປຸ່ມ pill ຢູ່ໃນ expand panel) — ລ໋ອກໄວ້ໂດຍຄ່າເລີ່ມຕົ້ນທຸກຄັ້ງທີ່ເປີດ,
+   ຕ້ອງແຕະຮູບໜ່ວຍກຸນແຈ 2 ຄັ້ງຕິດກັນເພື່ອປົດລ໋ອກ (ຄວາມຈຳຊົ່ວຄາວ ບໍ່ໄດ້ບັນທຶກລົງ localStorage). */
+let detailDeleteUnlocked = {}; // id -> true ໃນຂະນະທີ່ປົດລ໋ອກຢູ່
+let detailLockLastTapAt = {};  // id -> timestamp ຂອງການແຕະຄັ້ງກ່ອນ (ສຳລັບກວດ double-tap)
+function isDetailDeleteUnlocked(id){ return !!detailDeleteUnlocked[id]; }
+function handleDetailLockTap(id){
+  const now = Date.now();
+  const last = detailLockLastTapAt[id] || 0;
+  if(now - last < 400){
+    detailLockLastTapAt[id] = 0;
+    if(isDetailDeleteUnlocked(id)){ delete detailDeleteUnlocked[id]; }
+    else { detailDeleteUnlocked[id] = true; showToast('ປົດລ໋ອກແລ້ວ, ສາມາດລຶບຂໍ້ມູນໄດ້'); }
+    if(detailId === id) renderDetailSheet();
+  } else {
+    detailLockLastTapAt[id] = now;
+  }
+}
+
+function openDetail(id){ detailId = id; delete detailDeleteUnlocked[id]; renderDetailSheet(); }
+function closeDetail(){ if(detailId) delete detailDeleteUnlocked[detailId]; detailId = null; document.getElementById('detail-root').innerHTML=''; }
 function renderDetailSheet(){
   const root = document.getElementById('detail-root');
   if(!detailId){ root.innerHTML=''; return; }
   const raw = products.find(x=>x.id===detailId);
   if(!raw){ detailId=null; root.innerHTML=''; return; }
   const p = withTotals(raw);
+  const unlocked = isDetailDeleteUnlocked(p.id);
   root.innerHTML = `
     <div class="overlay" id="detail-overlay">
       <div class="modal" id="detail-modal">
@@ -2344,7 +2378,10 @@ function renderDetailSheet(){
           <h2>${esc(p.name)}</h2>
           <button class="icon-x" id="detail-close">${ICONS.x}</button>
         </div>
-        <div class="detail-img">${p.image ? '<img src="'+p.image+'" alt="">' : ICONS.image}</div>
+        <div class="detail-img">
+          ${p.image ? '<img src="'+p.image+'" alt="">' : ICONS.image}
+          <button type="button" class="detail-lock-btn ${unlocked?'unlocked':''}" id="detail-lock-btn" title="${unlocked?'ປົດລ໋ອກຢູ່ (ແຕະ 2 ຄັ້ງເພື່ອລ໋ອກຄືນ)':'ລ໋ອກຢູ່ (ແຕະ 2 ຄັ້ງເພື່ອປົດລ໋ອກ)'}">${unlocked?ICONS.lockOpen:ICONS.lockClosed}</button>
+        </div>
         <p class="muted" style="margin:0 0 12px; font-size:12px;">${p.code?('#'+esc(p.code)+' &middot; '):''}${p.price>0?(Number(p.price).toLocaleString()+' ກີບ'):''}</p>
         <div>${variantRowsHtml(p)}</div>
         <div class="row-actions" style="margin-top:14px;">
@@ -2353,13 +2390,14 @@ function renderDetailSheet(){
         </div>
         <div class="row-actions" style="margin-top:8px;">
           <button class="btn-edit" data-action="open-edit" data-id="${p.id}">${ICONS.pencil} ແກ້ໄຂ</button>
-          <button class="btn-del" data-action="confirm-delete" data-id="${p.id}">${ICONS.trash} ລຶບ</button>
+          <button class="btn-del ${unlocked?'':'locked'}" data-action="confirm-delete" data-id="${p.id}">${ICONS.trash} ລຶບ</button>
         </div>
       </div>
     </div>
   `;
   document.getElementById('detail-overlay').addEventListener('click', e=>{ if(e.target.id==='detail-overlay') closeDetail(); });
   document.getElementById('detail-close').addEventListener('click', closeDetail);
+  document.getElementById('detail-lock-btn').addEventListener('click', ()=> handleDetailLockTap(p.id));
 }
 
 /* ---------- REPORT TAB ---------- */
@@ -4438,11 +4476,13 @@ function renderConfirm(){
   root.innerHTML = `
     <div class="overlay center" id="confirm-overlay">
       <div class="confirm-box">
-        <p class="title">ລຶບ "${esc(p.name)}"?</p>
-        <p class="desc">ຂໍ້ມູນຈະຖືກລຶບຖາວອນ ແລະ ບໍ່ສາມາດກູ້ຄືນໄດ້</p>
+        <div class="modal-head" style="margin-bottom:10px;">
+          <p class="title" style="margin:0;">ທ່ານຕ້ອງການລຶບຂໍ້ມູນນີ້ແທ້ບໍ?</p>
+          <button class="icon-x" id="cancel-del-btn">${ICONS.x}</button>
+        </div>
+        <p class="desc">"${esc(p.name)}" ຈະຖືກລຶບຖາວອນ ແລະ ບໍ່ສາມາດກູ້ຄືນໄດ້</p>
         <div class="confirm-actions">
-          <button class="btn-cancel" id="cancel-del-btn">ຍົກເລີກ</button>
-          <button class="btn-confirm" id="do-del-btn">ລຶບ</button>
+          <button class="btn-confirm" id="do-del-btn">ຕົກລົງ</button>
         </div>
       </div>
     </div>
@@ -5316,6 +5356,12 @@ document.addEventListener('click', e=>{
   const id = t.dataset.id;
   if(action === 'toggle-expand'){
     expanded[id] = !expanded[id];
+    delete detailDeleteUnlocked[id]; /* ລ໋ອກປຸ່ມ "ລຶບ" ຄືນທຸກຄັ້ງທີ່ເປີດ/ປິດແຖວນີ້ */
+    if(tab === 'categories' && categoryDetailName){ renderCategoryListItems(categoryDetailName); }
+    else { renderListItems(); }
+  } else if(action === 'toggle-product-lock'){
+    e.stopPropagation();
+    handleDetailLockTap(id);
     if(tab === 'categories' && categoryDetailName){ renderCategoryListItems(categoryDetailName); }
     else { renderListItems(); }
   } else if(action === 'open-category'){
@@ -5353,7 +5399,11 @@ document.addEventListener('click', e=>{
   } else if(action === 'open-edit'){
     openEdit(id);
   } else if(action === 'confirm-delete'){
-    confirmDelete(id);
+    if(!isDetailDeleteUnlocked(id)){
+      showToast('ລ໋ອກຢູ່ — ແຕະຮູບໜ່ວຍກຸນແຈ 2 ຄັ້ງຕິດກັນເພື່ອປົດລ໋ອກກ່ອນລຶບ');
+    } else {
+      confirmDelete(id);
+    }
   } else if(action === 'adjust-variant'){
     const vid = t.dataset.vid;
     const delta = parseInt(t.dataset.delta, 10);
