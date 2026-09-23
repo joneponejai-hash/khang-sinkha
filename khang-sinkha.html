@@ -187,7 +187,10 @@
   .list-lock-icon svg{width:11px; height:11px; color:#fff;}
   .list-lock-btn.unlocked .list-lock-icon{background:var(--success);}
   .report-card{background:#fff; border-radius:16px; border:1px solid var(--dark-8); padding:16px; margin-bottom:12px; overflow:hidden;}
-  .po-ordernum-chip{display:inline-flex; align-items:center; gap:5px; margin-top:6px; padding:3px 9px; border-radius:8px; border:1px dashed var(--dark-15); background:rgba(255,255,255,.6); color:var(--dark-50); font-size:11px; font-family:inherit; cursor:pointer; max-width:100%;}
+  .orders-search-card{background:var(--dark); border-radius:16px; padding:14px 16px; margin-bottom:12px;}
+  .orders-search-card .search-wrap svg{color:rgba(255,255,255,.5);}
+  .orders-search-card .search-wrap input{background:#fff;}
+  .po-ordernum-chip{display:inline-flex; align-items:center; gap:5px; margin-top:6px; padding:3px 9px; border-radius:8px; border:1px dashed var(--dark-15); background:rgba(255,255,255,.6); color:var(--dark-50); font-size:11px; font-family:inherit; cursor:pointer; max-width:100%; white-space:nowrap; overflow:hidden;}
   .po-ordernum-chip b{color:var(--dark); font-weight:700;}
   .po-ordernum-chip svg{width:11px; height:11px; flex-shrink:0;}
   .po-ordernum-chip.add{color:var(--accent); border-color:var(--accent);}
@@ -1362,8 +1365,10 @@ function renderOrdersTab(){
         <button type="button" class="pdf-btn" id="orders-export-btn">${ICONS.pdf} ສົ່ງອອກ</button>
       </div>
       <p style="margin:10px 2px 0; font-weight:700; color:var(--dark); font-size:14px; line-height:1.6;">ຍອດຂາຍ <span style="color:#F40008; font-weight:800;">${billCount}</span> ບິນ, ລວມ <span style="color:#F40008; font-weight:800;">${itemCount}</span> ລາຍການ, ສົ່ງຟຣີ <span style="color:#F40008; font-weight:800;">${freeShipCount}</span> ບິນ</p>
-      <div class="search-wrap" style="margin:10px 0 0;">${ICONS.search}<input id="orders-search-input" placeholder="ຄົ້ນຫາຕາມເບີໂທ ຫຼື ຊື່ລູກຄ້າ..." value="${esc(ordersSearch)}"></div>
-      <p class="muted" style="margin:6px 2px 0; font-size:11px;">ຄົ້ນຫາຍ້ອນຫຼັງໄດ້ບໍ່ເກີນ ${CUSTOMER_ORDER_RETENTION_DAYS} ວັນ (ບິນຈະຖືກລຶບອອກຈາກລະບົບອັດຕະໂນມັດເມື່ອຄົບ ${CUSTOMER_ORDER_RETENTION_DAYS} ວັນ)</p>
+    </div>
+    <div class="orders-search-card">
+      <div class="search-wrap" style="margin-bottom:0;">${ICONS.search}<input id="orders-search-input" placeholder="ຄົ້ນຫາຕາມເບີໂທ ຫຼື ຊື່ລູກຄ້າ..." value="${esc(ordersSearch)}"></div>
+      <p style="margin:8px 2px 0; font-size:11px; color:rgba(255,255,255,.65);">ຄົ້ນຫາຍ້ອນຫຼັງໄດ້ບໍ່ເກີນ ${CUSTOMER_ORDER_RETENTION_DAYS} ວັນ (ບິນຈະຖືກລຶບອອກຈາກລະບົບອັດຕະໂນມັດເມື່ອຄົບ ${CUSTOMER_ORDER_RETENTION_DAYS} ວັນ)</p>
     </div>
     <div id="orders-list-root"></div>
   `;
@@ -2337,6 +2342,20 @@ function renderPurchaseOrderRows(){
       if(e.key === 'Enter'){ e.preventDefault(); savePurchaseOrderNumber(inp.id.replace('po-ordernum-input-','')); }
       else if(e.key === 'Escape'){ e.preventDefault(); cancelEditPurchaseOrderNumber(); }
     });
+  });
+  fitOrderNumChips();
+}
+
+/* ຫົດຂະໜາດຕົວໜັງສືຂອງປ້າຍ "ໝາຍເລກຄຳສັ່ງຊື້" ອັດຕະໂນມັດ ເມື່ອຂໍ້ມູນຍາວເກີນພື້ນທີ່ທີ່ມີ, ແທນການຕັດຄຳ/ຂຶ້ນແຖວໃໝ່ —
+   ວັດແທ້ຄວາມກວ້າງຈິງຫຼັງ render ແລ້ວ ຫຼຸດ font-size ເທື່ອລະໜ່ວຍຈົນກວ່າຂໍ້ຄວາມຈະພໍດີໃນແຖວດຽວ (ຢ່າງໜ້ອຍ 7px) */
+function fitOrderNumChips(){
+  document.querySelectorAll('.po-ordernum-chip:not(.add)').forEach(chip=>{
+    let size = 11;
+    chip.style.fontSize = size + 'px';
+    while(chip.scrollWidth > chip.clientWidth && size > 7){
+      size -= 1;
+      chip.style.fontSize = size + 'px';
+    }
   });
 }
 
