@@ -187,6 +187,16 @@
   .list-lock-icon svg{width:11px; height:11px; color:#fff;}
   .list-lock-btn.unlocked .list-lock-icon{background:var(--success);}
   .report-card{background:#fff; border-radius:16px; border:1px solid var(--dark-8); padding:16px; margin-bottom:12px; overflow:hidden;}
+  .po-ordernum-chip{display:inline-flex; align-items:center; gap:5px; margin-top:6px; padding:3px 9px; border-radius:8px; border:1px dashed var(--dark-15); background:rgba(255,255,255,.6); color:var(--dark-50); font-size:11px; font-family:inherit; cursor:pointer; max-width:100%;}
+  .po-ordernum-chip b{color:var(--dark); font-weight:700;}
+  .po-ordernum-chip svg{width:11px; height:11px; flex-shrink:0;}
+  .po-ordernum-chip.add{color:var(--accent); border-color:var(--accent);}
+  .po-ordernum-edit-row{display:flex; align-items:center; gap:6px;}
+  .po-ordernum-input{flex:1; min-width:0; height:32px; border-radius:8px; border:1px solid var(--dark-15); padding:0 8px; font-size:12px; font-family:inherit; background:#fff;}
+  .po-ordernum-save-btn, .po-ordernum-cancel-btn{width:32px; height:32px; flex-shrink:0; border:none; border-radius:8px; display:flex; align-items:center; justify-content:center; cursor:pointer;}
+  .po-ordernum-save-btn svg, .po-ordernum-cancel-btn svg{width:14px; height:14px;}
+  .po-ordernum-save-btn{background:var(--success); color:#fff;}
+  .po-ordernum-cancel-btn{background:var(--dark-5); color:var(--dark-50);}
   .report-label{font-size:12px; color:var(--dark-50); margin:0 0 4px;}
   .report-value{font-size:24px; font-weight:700; font-family:monospace; margin:0;}
   .report-value small{font-size:13px; font-weight:400; color:var(--dark-50); font-family:inherit;}
@@ -581,9 +591,18 @@ try{ purchaseOrders = JSON.parse(localStorage.getItem(PURCHASE_ORDERS_KEY) || '[
 function savePurchaseOrders(){ try{ localStorage.setItem(PURCHASE_ORDERS_KEY, JSON.stringify(purchaseOrders)); }catch(e){} scheduleAutoSync(); }
 
 const CUSTOMER_ORDERS_KEY = 'khang-sinkha-customer-orders-v1';
+const CUSTOMER_ORDER_RETENTION_DAYS = 30; // ບິນຈະຢູ່ໃນລະບົບໄດ້ພຽງ 30 ວັນ ເພື່ອປ້ອງກັນບໍ່ໃຫ້ຖານຂໍ້ມູນໃຫຍ່ ແລະ ໂຫຼດຊ້າ
 let customerOrders = [];
 try{ customerOrders = JSON.parse(localStorage.getItem(CUSTOMER_ORDERS_KEY) || '[]'); }catch(e){ customerOrders = []; }
 function saveCustomerOrders(){ try{ localStorage.setItem(CUSTOMER_ORDERS_KEY, JSON.stringify(customerOrders)); }catch(e){} scheduleAutoSync(); }
+/* ລຶບບິນທີ່ເກົ່າກວ່າ 30 ວັນອອກຈາກລະບົບອັດຕະໂນມັດ (ອີງໃສ່ createdAt) — ເອີ້ນຄັ້ງນຶ່ງຕອນໂຫຼດແອັບ ແລະ ອີກຄັ້ງທຸກຄັ້ງທີ່ເປີດໜ້າ "ອໍເດີ້ມື້ນີ້"
+   ເພື່ອໃຫ້ຂໍ້ມູນຖືກລ້າງຢູ່ສະເໝີເຖິງແມ່ນຈະເປີດແອັບຄ້າງໄວ້ເປັນເວລາດົນ */
+function pruneOldCustomerOrders(){
+  const cutoff = Date.now() - CUSTOMER_ORDER_RETENTION_DAYS*24*60*60*1000;
+  const before = customerOrders.length;
+  customerOrders = customerOrders.filter(o => !o.createdAt || new Date(o.createdAt).getTime() >= cutoff);
+  if(customerOrders.length !== before) saveCustomerOrders();
+}
 function findPendingOrder(code, size){
   return purchaseOrders.find(o => o.code === code && o.size === size);
 }
@@ -685,9 +704,11 @@ function localDateStr(d){
   return `${y}-${m}-${day}`;
 }
 let ordersFilterDate = localDateStr();
+let ordersSearch = ''; // ຄົ້ນຫາອໍເດີ້ (ໜ້າ "ອໍເດີ້ມື້ນີ້") ດ້ວຍເບີໂທ ຫຼື ຊື່ລູກຄ້າເທົ່ານັ້ນ
 let categoryDetailName = null;
 let poListSearch = '';
 let poListCategoryFilter = '';
+let poEditingOrderNumId = null; // id ຂອງລາຍການຈັດຊື້ທີ່ກຳລັງແກ້ໄຂ "ໝາຍເລກຄຳສັ່ງຊື້" ຢູ່ (null = ບໍ່ມີ)
 
 const SCANLOG_KEY = 'khang-sinkha-scanlog-v1';
 let scanLog = [];
@@ -1304,18 +1325,71 @@ function getOrderTotal(o){
 }
 
 /* ---------- ORDERS TAB (ອໍເດີ້ມື້ນີ້) ---------- */
+/* ຄົ້ນຫາອໍເດີ້ (ordersSearch) ໃຊ້ໄດ້ສະເພາະເບີໂທ ແລະ ຊື່ລູກຄ້າເທົ່ານັ້ນ — ເມື່ອບໍ່ໄດ້ຄົ້ນຫາ (q ຫວ່າງ) ຈະສະແດງສະເພາະວັນທີ່ເລືອກໄວ້,
+   ແຕ່ເມື່ອພິມຄົ້ນຫາ ຈະຄົ້ນຫາຂ້າມວັນທີໄດ້ (ບໍ່ຈຳກັດສະເພາະວັນທີ່ເລືອກ) ຍ້ອນຫຼັງໄດ້ບໍ່ເກີນ CUSTOMER_ORDER_RETENTION_DAYS (30 ວັນ)
+   ຊຶ່ງເປັນຂອບເຂດດຽວກັນກັບອາຍຸການເກັບຮັກສາບິນຢູ່ແລ້ວ (pruneOldCustomerOrders ລຶບບິນເກົ່າກວ່ານັ້ນອອກ). */
+function getFilteredOrders(){
+  const q = ordersSearch.trim().toLowerCase();
+  if(!q){
+    return customerOrders.filter(o => o.createdAt && localDateStr(o.createdAt) === ordersFilterDate);
+  }
+  const cutoff = Date.now() - CUSTOMER_ORDER_RETENTION_DAYS*24*60*60*1000;
+  return customerOrders
+    .filter(o => o.createdAt && new Date(o.createdAt).getTime() >= cutoff)
+    .filter(o => (o.phone||'').toLowerCase().includes(q) || (o.customerName||'').toLowerCase().includes(q));
+}
+
 function renderOrdersTab(){
+  pruneOldCustomerOrders();
   const content = document.getElementById('content');
   const dateObj = new Date(ordersFilterDate + 'T00:00:00');
   const dateLabel = dateObj.toLocaleDateString('lo-LA', { day:'2-digit', month:'2-digit', year:'numeric' });
-  const filtered = customerOrders.filter(o => o.createdAt && localDateStr(o.createdAt) === ordersFilterDate);
-  const billCount = filtered.length;
-  const itemCount = filtered.reduce((s,o)=> s + getOrderRealQty(o), 0);
-  const freeShipCount = filtered.filter(o => getOrderRealQty(o) > 1).length;
+  const dateFiltered = customerOrders.filter(o => o.createdAt && localDateStr(o.createdAt) === ordersFilterDate);
+  const billCount = dateFiltered.length;
+  const itemCount = dateFiltered.reduce((s,o)=> s + getOrderRealQty(o), 0);
+  const freeShipCount = dateFiltered.filter(o => getOrderRealQty(o) > 1).length;
+
+  content.innerHTML = `
+    <div class="report-card">
+      <div class="report-card-header">
+        <div class="report-card-header-row">
+          <span>ອໍເດີ້ປະຈຳວັນທີ:</span>
+          <span style="position:relative; display:inline-flex; align-items:center;">
+            <span id="orders-date-label" style="text-decoration:underline; text-underline-offset:3px; white-space:nowrap;">${esc(dateLabel)}</span>
+            <input type="date" id="orders-date-input" value="${ordersFilterDate}" style="position:absolute; inset:0; opacity:0; width:100%; height:100%; cursor:pointer; border:none;">
+          </span>
+        </div>
+        <button type="button" class="pdf-btn" id="orders-export-btn">${ICONS.pdf} ສົ່ງອອກ</button>
+      </div>
+      <p style="margin:10px 2px 0; font-weight:700; color:var(--dark); font-size:14px; line-height:1.6;">ຍອດຂາຍ <span style="color:#F40008; font-weight:800;">${billCount}</span> ບິນ, ລວມ <span style="color:#F40008; font-weight:800;">${itemCount}</span> ລາຍການ, ສົ່ງຟຣີ <span style="color:#F40008; font-weight:800;">${freeShipCount}</span> ບິນ</p>
+      <div class="search-wrap" style="margin:10px 0 0;">${ICONS.search}<input id="orders-search-input" placeholder="ຄົ້ນຫາຕາມເບີໂທ ຫຼື ຊື່ລູກຄ້າ..." value="${esc(ordersSearch)}"></div>
+      <p class="muted" style="margin:6px 2px 0; font-size:11px;">ຄົ້ນຫາຍ້ອນຫຼັງໄດ້ບໍ່ເກີນ ${CUSTOMER_ORDER_RETENTION_DAYS} ວັນ (ບິນຈະຖືກລຶບອອກຈາກລະບົບອັດຕະໂນມັດເມື່ອຄົບ ${CUSTOMER_ORDER_RETENTION_DAYS} ວັນ)</p>
+    </div>
+    <div id="orders-list-root"></div>
+  `;
+  document.getElementById('orders-search-input').addEventListener('input', e=>{
+    ordersSearch = e.target.value;
+    renderOrdersList();
+  });
+  document.getElementById('orders-date-input').addEventListener('change', e=>{
+    ordersFilterDate = e.target.value || localDateStr();
+    renderOrdersTab();
+  });
+  document.getElementById('orders-export-btn').addEventListener('click', ()=>printOrdersReport(getFilteredOrders(), dateLabel));
+  renderOrdersList();
+}
+
+function renderOrdersList(){
+  const root = document.getElementById('orders-list-root');
+  if(!root) return;
+  const filtered = getFilteredOrders();
+  const q = ordersSearch.trim().toLowerCase();
 
   let listHtml;
   if(filtered.length === 0){
-    listHtml = `<div class="empty">${ICONS.receipt}<p>ບໍ່ມີອໍເດີ້ໃນວັນທີນີ້</p></div>`;
+    listHtml = q
+      ? `<div class="empty">${ICONS.search}<p>ບໍ່ພົບອໍເດີ້ທີ່ຄົ້ນຫາ (ພາຍໃນ ${CUSTOMER_ORDER_RETENTION_DAYS} ວັນຫຼ້າສຸດ)</p></div>`
+      : `<div class="empty">${ICONS.receipt}<p>ບໍ່ມີອໍເດີ້ໃນວັນທີນີ້</p></div>`;
   } else {
     const sorted = [...filtered].sort((a,b)=> new Date(b.updatedAt) - new Date(a.updatedAt));
     listHtml = sorted.map(o => {
@@ -1329,6 +1403,7 @@ function renderOrdersTab(){
             <p style="font-weight:700; font-size:15px; margin:0; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
               <span>${esc(o.customerName)}</span>
               ${freeShip ? `<span style="background:rgba(154,201,59,.85); color:var(--dark); font-size:9px; font-weight:700; padding:2px 7px; border-radius:999px; white-space:nowrap;">ສົ່ງຟຣີ</span>` : ''}
+              ${q ? `<span style="background:var(--dark); color:#fff; font-size:9px; font-weight:700; padding:2px 7px; border-radius:999px; white-space:nowrap;">${esc(new Date(o.createdAt).toLocaleDateString('lo-LA', { day:'2-digit', month:'2-digit', year:'numeric' }))}</span>` : ''}
               ${carrierLogoHtml(o.shippingCarrier)}
             </p>
             <p class="muted" style="margin:2px 0 0; color:var(--dark);">${esc(o.phone)}</p>
@@ -1360,28 +1435,7 @@ function renderOrdersTab(){
     `;
     }).join('');
   }
-
-  content.innerHTML = `
-    <div class="report-card">
-      <div class="report-card-header">
-        <div class="report-card-header-row">
-          <span>ອໍເດີ້ປະຈຳວັນທີ:</span>
-          <span style="position:relative; display:inline-flex; align-items:center;">
-            <span id="orders-date-label" style="text-decoration:underline; text-underline-offset:3px; white-space:nowrap;">${esc(dateLabel)}</span>
-            <input type="date" id="orders-date-input" value="${ordersFilterDate}" style="position:absolute; inset:0; opacity:0; width:100%; height:100%; cursor:pointer; border:none;">
-          </span>
-        </div>
-        <button type="button" class="pdf-btn" id="orders-export-btn">${ICONS.pdf} ສົ່ງອອກ</button>
-      </div>
-      <p style="margin:10px 2px 0; font-weight:700; color:var(--dark); font-size:14px; line-height:1.6;">ຍອດຂາຍ <span style="color:#F40008; font-weight:800;">${billCount}</span> ບິນ, ລວມ <span style="color:#F40008; font-weight:800;">${itemCount}</span> ລາຍການ, ສົ່ງຟຣີ <span style="color:#F40008; font-weight:800;">${freeShipCount}</span> ບິນ</p>
-    </div>
-    ${listHtml}
-  `;
-  document.getElementById('orders-date-input').addEventListener('change', e=>{
-    ordersFilterDate = e.target.value || localDateStr();
-    renderOrdersTab();
-  });
-  document.getElementById('orders-export-btn').addEventListener('click', ()=>printOrdersReport(filtered, dateLabel));
+  root.innerHTML = listHtml;
 }
 
 function printOrdersReport(ordersList, dateLabel){
@@ -1993,7 +2047,7 @@ function confirmQuickScanAction(){
 let poState = null;
 
 function openPurchaseOrderModal(){
-  poState = { code:'', product:null, size:'', qty:'' };
+  poState = { code:'', product:null, size:'', qty:'', orderNumber:'' };
   renderPurchaseOrderModal();
 }
 function closePurchaseOrderModal(){ poState = null; document.getElementById('po-root').innerHTML = ''; }
@@ -2068,6 +2122,10 @@ function renderPurchaseOrderModal(){
           <label>ຈຳນວນທີ່ຕ້ອງການສັ່ງຊື້ *</label>
           <input id="po-qty" type="number" inputmode="numeric" min="1" value="${esc(s.qty)}" placeholder="0" ${matched?'':'disabled'}>
         </div>
+        <div class="field" style="margin-top:12px;">
+          <label>ໝາຍເລກຄຳສັ່ງຊື້ (ບໍ່ບັງຄັບ)</label>
+          <input id="po-order-number" type="text" value="${esc(s.orderNumber||'')}" placeholder="ເຊັ່ນ: PO-2026-001">
+        </div>
         <p id="po-error" style="color:var(--danger); font-size:12px; margin:4px 0 0; display:none;"></p>
         <div class="confirm-actions" style="margin-top:16px;">
           <button type="button" class="btn-cancel" id="po-cancel-btn">ຍົກເລີກ</button>
@@ -2084,6 +2142,7 @@ function renderPurchaseOrderModal(){
   const sizeSel = document.getElementById('po-size-select');
   if(sizeSel) sizeSel.addEventListener('change', e=>{ poState.size = e.target.value; });
   document.getElementById('po-qty').addEventListener('input', e=>{ poState.qty = e.target.value; });
+  document.getElementById('po-order-number').addEventListener('input', e=>{ poState.orderNumber = e.target.value; });
   document.getElementById('po-save-btn').addEventListener('click', confirmPurchaseOrder);
 }
 
@@ -2101,7 +2160,7 @@ function confirmPurchaseOrder(){
      ເພື່ອໃຫ້ເຫັນວັນ-ເວລາ ແລະ ຈຳນວນຂອງແຕ່ລະຄັ້ງແຍກກັນ */
   purchaseOrders = [...purchaseOrders, {
     id: uid(), code, productId: s.product.id, productName: base, color, size: s.size,
-    qty: n, createdAt: new Date().toISOString()
+    qty: n, orderNumber: (s.orderNumber||'').trim(), createdAt: new Date().toISOString()
   }];
   savePurchaseOrders();
   closePurchaseOrderModal();
@@ -2122,7 +2181,7 @@ function removePendingOrder(code, size){
 function openPurchaseOrderListModal(){
   renderPurchaseOrderListModal();
 }
-function closePurchaseOrderListModal(){ document.getElementById('po-list-root').innerHTML = ''; }
+function closePurchaseOrderListModal(){ poEditingOrderNumId = null; document.getElementById('po-list-root').innerHTML = ''; }
 
 /* ຫາໝວດໝູ່ຂອງລາຍການຈັດຊື້ນຶ່ງ ໂດຍອີງໃສ່ສິນຄ້າທີ່ມັນອ້າງອີງເຖິງ (ຜ່ານ productId ກ່ອນ, ຖ້າບໍ່ພົບໃຫ້ລອງທຽບລະຫັດ) */
 function getPurchaseOrderCategory(o){
@@ -2157,6 +2216,45 @@ function renderPurchaseOrderListModal(){
   document.getElementById('po-list-close').addEventListener('click', closePurchaseOrderListModal);
   document.getElementById('po-list-search').addEventListener('input', e=>{ poListSearch = e.target.value; renderPurchaseOrderRows(); });
   document.getElementById('po-list-category-filter').addEventListener('change', e=>{ poListCategoryFilter = e.target.value; renderPurchaseOrderRows(); });
+  renderPurchaseOrderRows();
+}
+
+/* ໝາຍເລກຄຳສັ່ງຊື້ (PO number) — ຫ້ອງຂໍ້ມູນເສີມ ບໍ່ບັງຄັບ, ແກ້ໄຂ/ບັນທຶກໄດ້ທຸກເວລາຈາກລາຍການໃນ list ນີ້ */
+function purchaseOrderNumHtml(o){
+  if(poEditingOrderNumId === o.id){
+    return `
+      <div class="po-ordernum-edit-row" style="margin-top:6px;">
+        <input type="text" class="po-ordernum-input" id="po-ordernum-input-${esc(o.id)}" value="${esc(o.orderNumber||'')}" placeholder="ໝາຍເລກຄຳສັ່ງຊື້ (ບໍ່ບັງຄັບ)">
+        <button type="button" class="po-ordernum-save-btn" data-po-ordernum-save="${esc(o.id)}" title="ບັນທຶກ">${ICONS.check}</button>
+        <button type="button" class="po-ordernum-cancel-btn" data-po-ordernum-cancel="${esc(o.id)}" title="ຍົກເລີກ">${ICONS.x}</button>
+      </div>
+    `;
+  }
+  if(o.orderNumber){
+    return `<button type="button" class="po-ordernum-chip" data-po-ordernum-edit="${esc(o.id)}" title="ແກ້ໄຂໝາຍເລກຄຳສັ່ງຊື້">ໝາຍເລກຄຳສັ່ງຊື້: <b>${esc(o.orderNumber)}</b> ${ICONS.pencil}</button>`;
+  }
+  return `<button type="button" class="po-ordernum-chip add" data-po-ordernum-edit="${esc(o.id)}">+ ໃສ່ໝາຍເລກຄຳສັ່ງຊື້</button>`;
+}
+
+function editPurchaseOrderNumber(id){
+  poEditingOrderNumId = id;
+  renderPurchaseOrderRows();
+  const inp = document.getElementById('po-ordernum-input-'+id);
+  if(inp){ inp.focus(); inp.select(); }
+}
+
+function savePurchaseOrderNumber(id){
+  const inp = document.getElementById('po-ordernum-input-'+id);
+  const val = inp ? inp.value.trim() : '';
+  purchaseOrders = purchaseOrders.map(o => o.id === id ? { ...o, orderNumber: val } : o);
+  savePurchaseOrders();
+  poEditingOrderNumId = null;
+  renderPurchaseOrderRows();
+  showToast(val ? 'ບັນທຶກໝາຍເລກຄຳສັ່ງຊື້ແລ້ວ' : 'ລຶບໝາຍເລກຄຳສັ່ງຊື້ແລ້ວ');
+}
+
+function cancelEditPurchaseOrderNumber(){
+  poEditingOrderNumId = null;
   renderPurchaseOrderRows();
 }
 
@@ -2197,6 +2295,7 @@ function renderPurchaseOrderRows(){
             <p style="margin:0;"><span style="display:inline-block; background:#2F6FED; color:#fff; font-weight:700; font-size:15px; padding:3px 9px; border-radius:8px;">${esc(o.productName)}${o.color && o.color !== '-' ? ' ('+esc(o.color)+')' : ''}</span></p>
             <p class="muted" style="margin:6px 0 0;">${o.code?('#'+esc(o.code)+' &middot; '):''}ຂະໜາດ ${esc(o.size)}</p>
             <p class="muted" style="margin:2px 0 0;">${esc(new Date(o.createdAt).toLocaleString('lo-LA'))}</p>
+            ${purchaseOrderNumHtml(o)}
           </div>
           <div style="display:flex; flex-direction:column; align-items:flex-end; gap:8px; flex-shrink:0;">
             <div style="display:flex; align-items:center; gap:10px;">
@@ -2223,6 +2322,21 @@ function renderPurchaseOrderRows(){
   });
   document.querySelectorAll('[data-po-partial-id]').forEach(btn=>{
     btn.addEventListener('click', ()=>{ openPartialReceiveModal(btn.dataset.poPartialId); });
+  });
+  document.querySelectorAll('[data-po-ordernum-edit]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ editPurchaseOrderNumber(btn.dataset.poOrdernumEdit); });
+  });
+  document.querySelectorAll('[data-po-ordernum-save]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ savePurchaseOrderNumber(btn.dataset.poOrdernumSave); });
+  });
+  document.querySelectorAll('[data-po-ordernum-cancel]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ cancelEditPurchaseOrderNumber(); });
+  });
+  document.querySelectorAll('.po-ordernum-input').forEach(inp=>{
+    inp.addEventListener('keydown', e=>{
+      if(e.key === 'Enter'){ e.preventDefault(); savePurchaseOrderNumber(inp.id.replace('po-ordernum-input-','')); }
+      else if(e.key === 'Escape'){ e.preventDefault(); cancelEditPurchaseOrderNumber(); }
+    });
   });
 }
 
@@ -5583,6 +5697,7 @@ function renderAll(){
   applyHeaderBrand();
   updateFabStyle();
 }
+pruneOldCustomerOrders(); /* ລ້າງບິນທີ່ເກົ່າກວ່າ 30 ວັນອອກ ກ່ອນສະແດງຜົນຄັ້ງທຳອິດ */
 renderAll();
 
 /* ---------- ປຸ່ມໂລໂກ້ຮ້ານ: ສະແດງຍອດຂາຍລວມທຸກບິນປະຈຳວັນ (pop up ໂຕໜັງສືລ້ວນໆ, ບໍ່ມີກ່ອງພື້ນຫຼັງ) ---------- */
