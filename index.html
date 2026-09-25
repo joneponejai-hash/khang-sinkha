@@ -1419,13 +1419,14 @@ function renderOrdersList(){
       const hasDiscount = getOrderDiscountPerUnit(realQty) > 0;
       return `
       <div class="report-card" style="margin-bottom:12px; padding:0; overflow:hidden;">
-        <div style="position:relative; display:flex; justify-content:space-between; align-items:flex-start; gap:8px; background:var(--order-header-color, #DBB994); padding:16px 12px 46px 16px;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; background:var(--order-header-color, #DBB994); padding:16px;">
           <div style="min-width:0;">
             <p style="font-weight:700; font-size:15px; margin:0; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
               <span>${esc(o.customerName)}</span>
               ${freeShip ? `<span style="background:rgba(154,201,59,.85); color:var(--dark); font-size:9px; font-weight:700; padding:2px 7px; border-radius:999px; white-space:nowrap;">ສົ່ງຟຣີ</span>` : ''}
               ${q ? `<span style="background:var(--dark); color:#fff; font-size:9px; font-weight:700; padding:2px 7px; border-radius:999px; white-space:nowrap;">${esc(new Date(o.createdAt).toLocaleDateString('lo-LA', { day:'2-digit', month:'2-digit', year:'numeric' }))}</span>` : ''}
               ${carrierLogoHtml(o.shippingCarrier)}
+              <button type="button" class="order-icon-btn" style="color:#2F6FED; padding:0; width:22px; height:22px; flex-shrink:0;" data-action="share-order" data-id="${o.id}" title="ແຊຣ໌ບິນ">${ICONS.send}</button>
             </p>
             <p class="muted" style="margin:2px 0 0; color:var(--dark);">${esc(o.phone)}</p>
             ${(o.shippingCarrier || o.shippingBranch) ? `<p style="margin:2px 0 0; font-size:11px; font-weight:600; color:var(--dark);">${esc(o.shippingCarrier || '')}${o.shippingCarrier && o.shippingBranch ? ' - ' : ''}${esc(o.shippingBranch || '')}</p>` : ''}
@@ -1443,7 +1444,6 @@ function renderOrdersList(){
             <span style="font-size:19px; font-weight:800; color:#9AC93B; white-space:nowrap; line-height:1.1; -webkit-text-stroke:0.6px #fff; text-shadow:-1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, 0 -1px 0 #fff, 0 1px 0 #fff, -1px 0 0 #fff, 1px 0 0 #fff;">${getOrderTotal(o).toLocaleString()} ກີບ</span>
             ${hasDiscount ? `<span style="background:#7B4B24; color:#fff; font-size:9px; font-weight:700; padding:2px 7px; border-radius:999px; white-space:nowrap;">ໄດ້ຮັບສ່ວນຫຼຸດ</span>` : ''}
           </div>
-          <button type="button" class="order-icon-btn" style="position:absolute; right:12px; bottom:10px; color:#2F6FED;" data-action="share-order" data-id="${o.id}" title="ແຊຣ໌ບິນ">${ICONS.send}</button>
         </div>
         <div style="padding:10px 16px 16px; background:var(--order-body-color, #F8E3C4);">
           ${o.items.map(it => `
