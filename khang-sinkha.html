@@ -5534,6 +5534,27 @@ function getFirebaseConfig(){
   try{ return JSON.parse(localStorage.getItem(FIREBASE_CONFIG_KEY) || 'null'); }catch(e){ return null; }
 }
 
+// People usually copy the raw snippet straight off the Firebase console
+// ("const firebaseConfig = { apiKey: '...', ... };"), which is valid JS but NOT
+// valid JSON (unquoted keys, single quotes, a trailing `;`, sometimes a leading
+// `const ... =`). Strict JSON.parse rejects that and shows a confusing error, so
+// try it as-is first, then fall back to tolerantly reshaping it into real JSON.
+function parseFirebaseConfigText(raw){
+  const text = (raw || '').trim();
+  if(!text) return null;
+  try{ return JSON.parse(text); }catch(e){}
+  try{
+    let t = text
+      .replace(/^(?:export\s+)?(?:const|let|var)\s+\w+\s*=\s*/, '') // leading "const firebaseConfig ="
+      .replace(/;\s*$/, '')                                          // trailing semicolon
+      .replace(/\/\/[^\n]*/g, '')                                    // // comments
+      .replace(/([{,]\s*)([A-Za-z_$][\w$]*)\s*:/g, '$1"$2":')        // unquoted keys -> quoted
+      .replace(/'((?:[^'\\]|\\.)*)'/g, (m, inner) => '"' + inner.replace(/"/g, '\\"') + '"') // single -> double quotes
+      .replace(/,(\s*[}\]])/g, '$1');                                // trailing commas
+    return JSON.parse(t);
+  }catch(e){ return null; }
+}
+
 function isFirebaseEnabled(){ return !!localStorage.getItem(FIREBASE_ENABLED_KEY); }
 
 function loadExternalScriptOnce(src){
@@ -5686,9 +5707,8 @@ async function pullFirebaseNow(){
 }
 
 async function enableFirebaseSync(configText){
-  let config;
-  try{ config = JSON.parse(configText); }
-  catch(e){ showToast('ຮູບແບບ Firebase config ບໍ່ຖືກຕ້ອງ (ຕ້ອງເປັນ JSON)'); return false; }
+  const config = parseFirebaseConfigText(configText);
+  if(!config){ showToast('ອ່ານ Firebase config ບໍ່ອອກ, ລອງກ໊ອບປີ້ໂຄດ firebaseConfig ຈາກ Firebase console ວາງໃສ່ໃໝ່ອີກຄັ້ງ'); return false; }
   if(!config.apiKey || !config.projectId){ showToast('Firebase config ຂາດຂໍ້ມູນສຳຄັນ (apiKey/projectId)'); return false; }
   localStorage.setItem(FIREBASE_CONFIG_KEY, JSON.stringify(config));
   localStorage.setItem(FIREBASE_ENABLED_KEY, '1'); // tentative — rolled back below if the write check fails
@@ -5744,6 +5764,15 @@ function closeBackupModal(){ document.getElementById('backup-root').innerHTML=''
 
 function renderBackupModal(){
   const root = document.getElementById('backup-root');
+  // Preserve whatever the person is mid-typing/pasting into these two fields.
+  // renderBackupModal() gets called again for reasons unrelated to these fields
+  // (e.g. a background auto Drive-sync finishing while this modal is open) —
+  // without this, that unrelated re-render would silently wipe out an in-progress
+  // paste before they ever click the enable/connect button (the reported bug).
+  const existingFirebaseTa = document.getElementById('f-firebase-config');
+  const preservedFirebaseConfigText = existingFirebaseTa ? existingFirebaseTa.value : null;
+  const existingClientIdInput = document.getElementById('f-clientid');
+  const preservedClientId = existingClientIdInput ? existingClientIdInput.value : null;
   const last = localStorage.getItem(LAST_BACKUP_KEY);
   const lastText = last ? new Date(last).toLocaleString('lo-LA') : 'ຍັງບໍ່ເຄີຍສຳຮອງ';
   const clientId = getClientId();
@@ -5777,7 +5806,7 @@ function renderBackupModal(){
               : `<p class="muted" style="margin:0 0 8px; line-height:1.5;">ເຊື່ອມຕໍ່ຄັ້ງດຽວ ຈາກນັ້ນສຳຮອງ/ກູ້ຄືນໄດ້ດ້ວຍການກົດປຸ່ມດຽວທຸກຄັ້ງ. Origin ຂອງໜ້ານີ້ (ໃສ່ໃນ Authorized JavaScript origins): <b style="color:var(--dark); font-family:monospace;">${esc(location.origin)}</b></p>
                  <div class="field" style="margin-bottom:8px;">
                    <label>Google OAuth Client ID</label>
-                   <input id="f-clientid" value="${esc(clientId)}" placeholder="xxxxx.apps.googleusercontent.com">
+                   <input id="f-clientid" value="${esc(preservedClientId !== null ? preservedClientId : clientId)}" placeholder="xxxxx.apps.googleusercontent.com">
                  </div>
                  <button type="button" class="submit-btn" id="connect-drive-btn" style="margin-top:0;">${ICONS.cloud} ເຊື່ອມຕໍ່ Google Drive</button>`
           }
@@ -5794,7 +5823,7 @@ function renderBackupModal(){
             : `<p class="muted" style="margin:0 0 8px; line-height:1.5;">ໃຫ້ທຸກອຸປະກອນ (ມືຖື/tablet) ເຫັນຂໍ້ມູນດຽວກັນທັນທີ ໂດຍບໍ່ຕ້ອງກົດ sync ເອງ. ຕ້ອງສ້າງ Firebase project ຟຣີກ່ອນ (ເບິ່ງວິທີຢູ່ລຸ່ມ), ແລ້ວວາງ config ດຽວກັນນີ້ໃສ່ໃນທຸກອຸປະກອນ.</p>
                <div class="field" style="margin-bottom:8px;">
                  <label>Firebase Config (JSON)</label>
-                 <textarea id="f-firebase-config" rows="4" style="font-family:monospace; font-size:11px;" placeholder='{"apiKey":"...","projectId":"...","...":"..."}'>${esc(localStorage.getItem(FIREBASE_CONFIG_KEY) || '')}</textarea>
+                 <textarea id="f-firebase-config" rows="4" style="font-family:monospace; font-size:11px;" placeholder='{"apiKey":"...","projectId":"...","...":"..."}'>${esc(preservedFirebaseConfigText !== null ? preservedFirebaseConfigText : (localStorage.getItem(FIREBASE_CONFIG_KEY) || ''))}</textarea>
                </div>
                <button type="button" class="submit-btn" id="firebase-enable-btn" style="margin-top:0;">ເປີດໃຊ້ Realtime Sync</button>
                <p class="muted" style="margin:8px 0 0; line-height:1.6; font-size:11px;">ວິທີສ້າງ (ຟຣີ): ໄປ console.firebase.google.com &rarr; ສ້າງໂປຣເຈັກ &rarr; ເພີ່ມ "Web app" &rarr; ຄັດລອກ firebaseConfig ວາງໃສ່ຂ້າງເທິງ &rarr; ໄປໜ້າ Firestore Database &rarr; ສ້າງຖານຂໍ້ມູນ (ໂໝດ test ກໍ່ໄດ້ໃນເບື້ອງຕົ້ນ)</p>`
