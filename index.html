@@ -500,9 +500,20 @@
     #print-area, #print-area *{ visibility:visible; }
     #print-area{ position:absolute; left:0; top:0; width:100%; display:block !important; }
   }
+  /* ---------- APP LAUNCH SPLASH SCREEN ---------- */
+  #app-splash{position:fixed; inset:0; z-index:9999; background:#2E2626; display:flex; align-items:center; justify-content:center; transition:opacity .5s ease;}
+  #app-splash.hide{opacity:0; pointer-events:none;}
+  .app-splash-logo{width:168px; height:168px; border-radius:50%; overflow:hidden; position:relative; background:transparent;}
+  .app-splash-logo img{width:100%; height:100%; object-fit:contain; display:block;}
+  .app-splash-logo::after{content:''; position:absolute; top:0; left:-160%; width:60%; height:100%; background:linear-gradient(115deg, transparent 0%, transparent 35%, rgba(255,255,255,.7) 50%, transparent 65%, transparent 100%); transform:skewX(-20deg); animation:btnGlintSweep 2.2s ease-in-out infinite;}
 </style>
 </head>
 <body>
+<div id="app-splash">
+  <div class="app-splash-logo">
+    <img src="icons/splash-logo.png" alt="">
+  </div>
+</div>
 <div id="install-banner-root"></div>
 <div id="print-area" class="print-only"></div>
 <div id="pdf-preview-root"></div>
@@ -6277,6 +6288,16 @@ function renderAll(){
 }
 pruneOldCustomerOrders(); /* ລ້າງບິນທີ່ເກົ່າກວ່າ 30 ວັນອອກ ກ່ອນສະແດງຜົນຄັ້ງທຳອິດ */
 renderAll();
+(function hideAppSplash(){
+  const splash = document.getElementById('app-splash');
+  if(!splash) return;
+  // Let the shine sweep play at least once so it doesn't feel like a flash,
+  // then fade the splash out to reveal the already-rendered app underneath.
+  setTimeout(()=>{
+    splash.classList.add('hide');
+    setTimeout(()=>{ splash.remove(); }, 550);
+  }, 900);
+})();
 
 /* ---------- ປຸ່ມໂລໂກ້ຮ້ານ: ສະແດງຍອດຂາຍລວມທຸກບິນປະຈຳວັນ (pop up ໂຕໜັງສືລ້ວນໆ, ບໍ່ມີກ່ອງພື້ນຫຼັງ) ---------- */
 function setupDailyTotalBtnImg(){
