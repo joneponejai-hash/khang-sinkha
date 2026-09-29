@@ -1,4 +1,4 @@
-const CACHE_NAME = 'khang-sinkha-v86';
+const CACHE_NAME = 'khang-sinkha-v90';
 const APP_SHELL = [
   './',
   './index.html',
@@ -6,7 +6,8 @@ const APP_SHELL = [
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-512-maskable.png',
-  './icons/apple-touch-icon.png'
+  './icons/apple-touch-icon.png',
+  './icons/splash-logo.png'
 ];
 
 self.addEventListener('install', event => {
