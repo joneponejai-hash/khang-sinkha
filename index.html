@@ -289,10 +289,10 @@
   .daily-total-text .caption{display:block; font-size:12px; font-weight:700; color:#fff; -webkit-text-stroke:0; margin-bottom:6px; letter-spacing:.5px;}
   @keyframes daily-total-rotate{ from{ transform:rotate(0deg); } to{ transform:rotate(360deg); } }
   @keyframes daily-total-pulse{ 0%,100%{ opacity:.25; transform:scale(.7); } 50%{ opacity:1; transform:scale(1.15); } }
-  .share-preview-overlay{position:fixed; inset:0; background:rgba(0,0,0,.65); display:flex; align-items:center; justify-content:center; z-index:60; padding:24px;}
-  .share-preview-box{position:relative; background:#fff; border-radius:20px; padding:14px; max-width:420px; width:100%; max-height:88vh; display:flex; flex-direction:column; gap:12px; box-shadow:0 12px 40px rgba(0,0,0,.4);}
+  .share-preview-overlay{position:fixed; inset:0; background:rgba(0,0,0,.65); display:flex; align-items:center; justify-content:center; z-index:60; padding:12px;}
+  .share-preview-box{position:relative; background:#fff; border-radius:20px; padding:14px; max-width:480px; width:100%; max-height:94vh; display:flex; flex-direction:column; gap:12px; box-shadow:0 12px 40px rgba(0,0,0,.4);}
   .share-preview-loading{padding:60px 20px; text-align:center; font-size:14px; font-weight:600; color:var(--dark-60);}
-  .share-preview-img{width:100%; border-radius:14px; display:block; max-height:60vh; object-fit:contain; background:#F6F4EF; flex:1; min-height:0;}
+  .share-preview-img{width:100%; border-radius:14px; display:block; max-height:70vh; object-fit:contain; background:#F6F4EF; flex:1; min-height:0;}
   .share-preview-close{position:absolute; top:-14px; right:-14px; width:34px; height:34px; border-radius:50%; background:var(--dark); color:#fff; border:none; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 4px 12px rgba(0,0,0,.35); z-index:2;}
   .share-preview-close svg{width:16px; height:16px;}
   .share-preview-actions{display:flex;}
@@ -500,9 +500,20 @@
     #print-area, #print-area *{ visibility:visible; }
     #print-area{ position:absolute; left:0; top:0; width:100%; display:block !important; }
   }
+  /* ---------- APP LAUNCH SPLASH SCREEN ---------- */
+  #app-splash{position:fixed; inset:0; z-index:9999; background:#1C2B33; display:flex; align-items:center; justify-content:center; transition:opacity .5s ease;}
+  #app-splash.hide{opacity:0; pointer-events:none;}
+  .app-splash-logo{width:168px; height:168px; border-radius:50%; overflow:hidden; position:relative; background:transparent;}
+  .app-splash-logo img{width:100%; height:100%; object-fit:contain; display:block;}
+  .app-splash-logo::after{content:''; position:absolute; top:0; left:-160%; width:60%; height:100%; background:linear-gradient(115deg, transparent 0%, transparent 35%, rgba(255,255,255,.7) 50%, transparent 65%, transparent 100%); transform:skewX(-20deg); animation:btnGlintSweep 2.2s ease-in-out infinite;}
 </style>
 </head>
 <body>
+<div id="app-splash">
+  <div class="app-splash-logo">
+    <img src="icons/splash-logo.png" alt="">
+  </div>
+</div>
 <div id="install-banner-root"></div>
 <div id="print-area" class="print-only"></div>
 <div id="pdf-preview-root"></div>
@@ -1407,33 +1418,26 @@ function renderOrdersTab(){
   renderOrdersList();
 }
 
-function renderOrdersList(){
-  const root = document.getElementById('orders-list-root');
-  if(!root) return;
-  const filtered = getFilteredOrders();
-  const q = ordersSearch.trim().toLowerCase();
-
-  let listHtml;
-  if(filtered.length === 0){
-    listHtml = q
-      ? `<div class="empty">${ICONS.search}<p>ບໍ່ພົບອໍເດີ້ທີ່ຄົ້ນຫາ (ພາຍໃນ ${CUSTOMER_ORDER_RETENTION_DAYS} ວັນຫຼ້າສຸດ)</p></div>`
-      : `<div class="empty">${ICONS.receipt}<p>ບໍ່ມີອໍເດີ້ໃນວັນທີນີ້</p></div>`;
-  } else {
-    const sorted = [...filtered].sort((a,b)=> new Date(b.updatedAt) - new Date(a.updatedAt));
-    listHtml = sorted.map(o => {
-      const realQty = getOrderRealQty(o);
-      const freeShip = realQty > 1;
-      const hasDiscount = getOrderDiscountPerUnit(realQty) > 0;
-      return `
-      <div class="report-card" style="margin-bottom:12px; padding:0; overflow:hidden;">
+/* ການ໋ອອກແບບໃບອໍເດີ້ (header/body/items) ໃຊ້ຮ່ວມກັນລະຫວ່າງລາຍການຕົວຈິງ (renderOrdersList)
+   ແລະ ຮູບທີ່ແຊຣ໌ອອກໄປ (generateOrderShareImage) — ເພື່ອໃຫ້ຮູບທີ່ແຊຣ໌ອອກໄປ "ໜ້າຕາຄືກັນເປະ"
+   ກັບການ໋ໃນແອັບ. forExport=true ຈະເອົາປຸ່ມຕ່າງໆ (ແຊຣ໌/ແກ້ໄຂ/ຮັບ/ລຶບ) ອອກ ເພາະເປັນປຸ່ມຄວບຄຸມພາຍໃນແອັບ
+   ບໍ່ແມ່ນສ່ວນໜຶ່ງຂອງ "ໃບບິນ" ທີ່ຈະສົ່ງອອກໄປໃຫ້ລູກຄ້າ. */
+function buildOrderCardHtml(o, opts={}){
+  const forExport = !!opts.forExport;
+  const showDateBadge = !!opts.showDateBadge;
+  const realQty = getOrderRealQty(o);
+  const freeShip = realQty > 1;
+  const hasDiscount = getOrderDiscountPerUnit(realQty) > 0;
+  return `
+      <div class="report-card" style="margin-bottom:${forExport ? '0' : '12px'}; padding:0; overflow:hidden;">
         <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; background:var(--order-header-color, #DBB994); padding:16px;">
           <div style="min-width:0;">
             <p style="font-weight:700; font-size:15px; margin:0; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
               <span>${esc(o.customerName)}</span>
               ${freeShip ? `<span style="background:rgba(154,201,59,.85); color:var(--dark); font-size:9px; font-weight:700; padding:2px 7px; border-radius:999px; white-space:nowrap;">ສົ່ງຟຣີ</span>` : ''}
-              ${q ? `<span style="background:var(--dark); color:#fff; font-size:9px; font-weight:700; padding:2px 7px; border-radius:999px; white-space:nowrap;">${esc(new Date(o.createdAt).toLocaleDateString('lo-LA', { day:'2-digit', month:'2-digit', year:'numeric' }))}</span>` : ''}
+              ${showDateBadge ? `<span style="background:var(--dark); color:#fff; font-size:9px; font-weight:700; padding:2px 7px; border-radius:999px; white-space:nowrap;">${esc(new Date(o.createdAt).toLocaleDateString('lo-LA', { day:'2-digit', month:'2-digit', year:'numeric' }))}</span>` : ''}
               ${carrierLogoHtml(o.shippingCarrier)}
-              <button type="button" class="order-icon-btn" style="color:#2F6FED; padding:0; width:22px; height:22px; flex-shrink:0;" data-action="share-order" data-id="${o.id}" title="ແຊຣ໌ບິນ">${ICONS.send}</button>
+              ${forExport ? '' : `<button type="button" class="order-icon-btn" style="color:#2F6FED; padding:0; width:22px; height:22px; flex-shrink:0;" data-action="share-order" data-id="${o.id}" title="ແຊຣ໌ບິນ">${ICONS.send}</button>`}
             </p>
             <p class="muted" style="margin:2px 0 0; color:var(--dark);">${esc(o.phone)}</p>
             ${(o.shippingCarrier || o.shippingBranch) ? `<p style="margin:2px 0 0; font-size:11px; font-weight:600; color:var(--dark);">${esc(o.shippingCarrier || '')}${o.shippingCarrier && o.shippingBranch ? ' - ' : ''}${esc(o.shippingBranch || '')}</p>` : ''}
@@ -1442,11 +1446,11 @@ function renderOrdersList(){
             <div style="display:flex; align-items:center; gap:10px;">
               ${o.status === 'accepted'
                 ? `<span style="color:var(--success); font-weight:700; font-size:12px; white-space:nowrap; display:flex; align-items:center; gap:4px;">${ICONS.check} ຮັບອໍເດີ້ແລ້ວ</span>`
-                : `
+                : (forExport ? '' : `
                   <button type="button" class="order-icon-btn" style="color:var(--dark);" data-action="edit-order" data-id="${o.id}">${ICONS.pencil}</button>
                   <button type="button" class="order-icon-btn" style="color:var(--success);" data-action="accept-order" data-id="${o.id}">${ICONS.check}</button>
-                `}
-              <button type="button" class="order-icon-btn" style="color:var(--danger);" data-action="delete-order" data-id="${o.id}">${ICONS.x}</button>
+                `)}
+              ${forExport ? '' : `<button type="button" class="order-icon-btn" style="color:var(--danger);" data-action="delete-order" data-id="${o.id}">${ICONS.x}</button>`}
             </div>
             <span style="font-size:19px; font-weight:800; color:#9AC93B; white-space:nowrap; line-height:1.1; -webkit-text-stroke:0.6px #fff; text-shadow:-1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, 0 -1px 0 #fff, 0 1px 0 #fff, -1px 0 0 #fff, 1px 0 0 #fff;">${getOrderTotal(o).toLocaleString()} ກີບ</span>
             ${hasDiscount ? `<span style="background:#7B4B24; color:#fff; font-size:9px; font-weight:700; padding:2px 7px; border-radius:999px; white-space:nowrap;">ໄດ້ຮັບສ່ວນຫຼຸດ</span>` : ''}
@@ -1462,7 +1466,22 @@ function renderOrdersList(){
         </div>
       </div>
     `;
-    }).join('');
+}
+
+function renderOrdersList(){
+  const root = document.getElementById('orders-list-root');
+  if(!root) return;
+  const filtered = getFilteredOrders();
+  const q = ordersSearch.trim().toLowerCase();
+
+  let listHtml;
+  if(filtered.length === 0){
+    listHtml = q
+      ? `<div class="empty">${ICONS.search}<p>ບໍ່ພົບອໍເດີ້ທີ່ຄົ້ນຫາ (ພາຍໃນ ${CUSTOMER_ORDER_RETENTION_DAYS} ວັນຫຼ້າສຸດ)</p></div>`
+      : `<div class="empty">${ICONS.receipt}<p>ບໍ່ມີອໍເດີ້ໃນວັນທີນີ້</p></div>`;
+  } else {
+    const sorted = [...filtered].sort((a,b)=> new Date(b.updatedAt) - new Date(a.updatedAt));
+    listHtml = sorted.map(o => buildOrderCardHtml(o, { showDateBadge: !!q })).join('');
   }
   root.innerHTML = listHtml;
 }
@@ -4405,114 +4424,24 @@ async function doShareImage(){
 }
 
 /* ---------- ແຊຣ໌ບິນອໍເດີ້ (ໜ້າ "ອໍເດີ້ມື້ນີ້") ອອກ social network ---------- */
+/* ຮູບທີ່ແຊຣ໌ອອກໄປ: ສ້າງຈາກ card HTML ຕົວຈິງອັນດຽວກັນກັບທີ່ສະແດງຢູ່ໃນລາຍການ (buildOrderCardHtml)
+   ແລ້ວຖ່າຍເປັນຮູບດ້ວຍ html2canvas — ແທນການແຕ້ມ canvas ດ້ວຍມືເປັນ "ໃບບິນ" ແບບແຍກຕ່າງຫາກ (ແບບເກົ່າ)
+   ເພື່ອໃຫ້ຮູບທີ່ແຊຣ໌ອອກໄປ "ໜ້າຕາຄືກັນເປະ" ກັບສິ່ງທີ່ເຫັນຢູ່ໃນແອັບຕາມທີ່ລູກຄ້າ (ຮ້ານ) ຮ້ອງຂໍ. */
 async function generateOrderShareImage(o){
-  const W = 900, PAD = 40;
-  const headerColor = (getComputedStyle(document.documentElement).getPropertyValue('--order-header-color') || '').trim() || '#DBB994';
-  const bodyColor = (getComputedStyle(document.documentElement).getPropertyValue('--order-body-color') || '').trim() || '#F8E3C4';
-  const realQty = getOrderRealQty(o);
-  const freeShip = realQty > 1;
-  const discount = getOrderDiscount(o);
-  const hasShip = !!(o.shippingCarrier || o.shippingBranch);
-  const hasDiscount = discount > 0;
-  const HEADER_TOP_H = 120;
-  const BILL_HEAD_H = 164 + (hasShip ? 32 : 0) + (hasDiscount ? 26 : 0);
-  const itemRowH = 54;
-  const ITEMS_H = o.items.length * itemRowH + 30;
-  const FOOTER_H = 70;
-  const H = HEADER_TOP_H + BILL_HEAD_H + ITEMS_H + FOOTER_H;
-
-  const canvas = document.createElement('canvas');
-  canvas.width = W; canvas.height = H;
-  const ctx = canvas.getContext('2d');
-
-  ctx.fillStyle = '#F6F4EF';
-  ctx.fillRect(0, 0, W, H);
-
-  /* ໂລໂກ້ຮ້ານ */
-  ctx.fillStyle = '#12213A';
-  ctx.fillRect(0, 0, W, HEADER_TOP_H);
+  const ok = await ensurePdfLibs();
+  if(!ok || !window.html2canvas) return null;
+  const stage = document.createElement('div');
+  stage.style.cssText = 'position:fixed; left:-9999px; top:0; width:420px;';
+  stage.innerHTML = buildOrderCardHtml(o, { forExport:true });
+  document.body.appendChild(stage);
   try{
-    const logoImg = await loadImageAsync(effectiveStoreLogo());
-    ctx.save();
-    roundRectPath(ctx, 30, 20, 80, 80, 40);
-    ctx.clip();
-    ctx.drawImage(logoImg, 30, 20, 80, 80);
-    ctx.restore();
-  }catch(e){}
-  ctx.fillStyle = '#fff';
-  ctx.font = '700 30px "Noto Sans Lao", sans-serif';
-  ctx.textAlign = 'left';
-  ctx.fillText('MEN SHOP', 130, 57);
-  ctx.font = '400 16px "Noto Sans Lao", sans-serif';
-  ctx.fillStyle = 'rgba(255,255,255,.75)';
-  ctx.fillText('ໃບອໍເດີ້ສັ່ງຊື້', 130, 85);
-
-  let y = HEADER_TOP_H;
-  ctx.fillStyle = headerColor;
-  ctx.fillRect(0, y, W, BILL_HEAD_H);
-  let ty = y + 46;
-  ctx.fillStyle = '#1C2B33';
-  ctx.font = '800 32px "Noto Sans Lao", sans-serif';
-  ctx.textAlign = 'left';
-  ctx.fillText(o.customerName, PAD, ty);
-  if(freeShip){
-    const label = 'ສົ່ງຟຣີ';
-    ctx.font = '700 18px "Noto Sans Lao", sans-serif';
-    const tw = ctx.measureText(label).width + 24;
-    ctx.fillStyle = '#9AC93B';
-    roundRectPath(ctx, W-PAD-tw, ty-28, tw, 34, 17);
-    ctx.fill();
-    ctx.fillStyle = '#1C2B33';
-    ctx.textAlign = 'center';
-    ctx.fillText(label, W-PAD-tw/2, ty-4);
-    ctx.textAlign = 'left';
+    // 2 ຮອບ requestAnimationFrame ລໍໃຫ້ browser layout ແລະໂຫຼດຮູບ carrier-logo/font ສຳເລັດກ່ອນຖ່າຍ
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    const canvas = await window.html2canvas(stage, { scale:3, backgroundColor:null, useCORS:true });
+    return await new Promise(resolve => canvas.toBlob(resolve, 'image/png', 0.95));
+  } finally {
+    stage.remove();
   }
-  ty += 42;
-  ctx.font = '400 22px "Noto Sans Lao", sans-serif';
-  ctx.fillStyle = '#4B4438';
-  ctx.fillText(o.phone, PAD, ty);
-  if(hasShip){
-    ty += 32;
-    ctx.font = '700 20px "Noto Sans Lao", sans-serif';
-    ctx.fillStyle = '#1C2B33';
-    ctx.fillText(`${o.shippingCarrier||''}${o.shippingCarrier && o.shippingBranch ? ' - ' : ''}${o.shippingBranch||''}`, PAD, ty);
-  }
-  ty += 46;
-  ctx.font = '800 44px monospace';
-  ctx.fillStyle = '#12213A';
-  ctx.fillText(getOrderTotal(o).toLocaleString() + ' ກີບ', PAD, ty);
-  if(hasDiscount){
-    ty += 26;
-    ctx.font = '700 16px "Noto Sans Lao", sans-serif';
-    ctx.fillStyle = '#7B4B24';
-    ctx.fillText('(ໄດ້ຮັບສ່ວນຫຼຸດແລ້ວ)', PAD, ty);
-  }
-
-  y += BILL_HEAD_H;
-  ctx.fillStyle = bodyColor;
-  ctx.fillRect(0, y, W, ITEMS_H);
-  let iy = y + 40;
-  o.items.forEach(it=>{
-    ctx.font = '700 22px "Noto Sans Lao", sans-serif';
-    ctx.fillStyle = '#1C2B33';
-    ctx.textAlign = 'left';
-    ctx.fillText(`${it.productName} (${it.size})`, PAD, iy);
-    ctx.font = '700 22px monospace';
-    ctx.textAlign = 'right';
-    ctx.fillText('x'+it.qty, W-PAD, iy);
-    ctx.textAlign = 'left';
-    iy += itemRowH;
-  });
-
-  ctx.strokeStyle = '#E0DACD';
-  ctx.beginPath(); ctx.moveTo(PAD, y+ITEMS_H); ctx.lineTo(W-PAD, y+ITEMS_H); ctx.stroke();
-  ctx.fillStyle = '#8A8477';
-  ctx.font = '400 18px "Noto Sans Lao", sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('ຂອບໃຈທີ່ອຸດໜູນ — ສົນໃຈສັ່ງຊື້ ທັກແຊັດມາຫາພວກເຮົາ', W/2, y+ITEMS_H+45);
-  ctx.textAlign = 'left';
-
-  return new Promise(resolve => canvas.toBlob(resolve, 'image/png', 0.95));
 }
 
 let orderShareImageState = null;
@@ -6277,6 +6206,16 @@ function renderAll(){
 }
 pruneOldCustomerOrders(); /* ລ້າງບິນທີ່ເກົ່າກວ່າ 30 ວັນອອກ ກ່ອນສະແດງຜົນຄັ້ງທຳອິດ */
 renderAll();
+(function hideAppSplash(){
+  const splash = document.getElementById('app-splash');
+  if(!splash) return;
+  // Let the shine sweep play at least once so it doesn't feel like a flash,
+  // then fade the splash out to reveal the already-rendered app underneath.
+  setTimeout(()=>{
+    splash.classList.add('hide');
+    setTimeout(()=>{ splash.remove(); }, 550);
+  }, 900);
+})();
 
 /* ---------- ປຸ່ມໂລໂກ້ຮ້ານ: ສະແດງຍອດຂາຍລວມທຸກບິນປະຈຳວັນ (pop up ໂຕໜັງສືລ້ວນໆ, ບໍ່ມີກ່ອງພື້ນຫຼັງ) ---------- */
 function setupDailyTotalBtnImg(){
